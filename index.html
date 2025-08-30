@@ -50,23 +50,41 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <span id="user-status" class="text-sm text-gray-600">未登录</span>
+                    <span id="user-id" class="hidden text-xs text-gray-500"></span>
+                    <button id="profile-btn" class="hidden px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">个人资料</button>
                     <button id="logout-btn" class="hidden px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">退出</button>
                 </div>
             </div>
             
-            <div id="login-form" class="mt-4 flex space-x-2">
-                <input 
-                    id="email-input" 
-                    type="email" 
-                    placeholder="输入邮箱地址" 
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                <button 
-                    id="login-btn" 
-                    class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    登录
-                </button>
+            <div id="login-form" class="mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <input 
+                        id="email-input" 
+                        type="email" 
+                        placeholder="输入邮箱地址" 
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                    <input 
+                        id="password-input" 
+                        type="password" 
+                        placeholder="输入密码" 
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+                <div class="flex space-x-2">
+                    <button 
+                        id="login-btn" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        登录
+                    </button>
+                    <button 
+                        id="register-btn" 
+                        class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                        注册
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -89,6 +107,24 @@
             </div>
         </div>
 
+        <!-- User Profile Section -->
+        <div id="profile-section" class="hidden bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-4">个人资料</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input id="profile-name" type="text" placeholder="真实姓名" class="px-3 py-2 border border-gray-300 rounded-md">
+                <input id="profile-phone" type="tel" placeholder="手机号码" class="px-3 py-2 border border-gray-300 rounded-md">
+                <input id="profile-id-number" type="text" placeholder="身份证号码" class="px-3 py-2 border border-gray-300 rounded-md">
+                <select id="profile-gender" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">选择性别</option>
+                    <option value="male">男</option>
+                    <option value="female">女</option>
+                </select>
+                <input id="profile-age" type="number" placeholder="年龄" min="18" max="100" class="px-3 py-2 border border-gray-300 rounded-md">
+                <textarea id="profile-bio" placeholder="个人简介" class="px-3 py-2 border border-gray-300 rounded-md"></textarea>
+            </div>
+            <button id="save-profile-btn" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">保存资料</button>
+        </div>
+
         <!-- Passenger Section -->
         <div id="passenger-section" class="hidden">
             <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -99,7 +135,7 @@
                     <input id="passenger-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
                     <input id="passenger-time" type="time" class="px-3 py-2 border border-gray-300 rounded-md">
                     <input id="passenger-seats" type="number" placeholder="需要座位数" min="1" max="8" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <textarea id="passenger-note" placeholder="备注信息" class="px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                    <textarea id="passenger-note" placeholder="备注信息" class="px-3 py-2 border border-gray-300 rounded-md col-span-full"></textarea>
                 </div>
                 <button id="add-passenger-request" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">发布需求</button>
             </div>
@@ -155,6 +191,7 @@
         // Initialize Supabase client
         let supabaseClient;
         let currentUser = null;
+        let userProfile = null;
         let userType = null;
 
         // Initialize app when page loads
@@ -164,20 +201,33 @@
 
         function initializeApp() {
             try {
+                // Check if supabase is available
+                if (typeof supabase === 'undefined') {
+                    console.error('Supabase library not loaded');
+                    showMessage('系统初始化失败，请刷新页面重试', 'error');
+                    return;
+                }
+
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 setupEventListeners();
                 checkAuthState();
                 
                 // Listen for auth state changes
-                supabaseClient.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_IN') {
-                        currentUser = session.user;
-                        updateAuthUI();
-                    } else if (event === 'SIGNED_OUT') {
-                        currentUser = null;
-                        userType = null;
-                        updateAuthUI();
-                        hideAllSections();
+                supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                    try {
+                        if (event === 'SIGNED_IN') {
+                            currentUser = session.user;
+                            updateAuthUI();
+                            await loadUserProfile();
+                        } else if (event === 'SIGNED_OUT') {
+                            currentUser = null;
+                            userProfile = null;
+                            userType = null;
+                            updateAuthUI();
+                            hideAllSections();
+                        }
+                    } catch (error) {
+                        console.error('Auth state change error:', error);
                     }
                 });
             } catch (error) {
@@ -187,86 +237,193 @@
         }
 
         function setupEventListeners() {
-            // Auth events
-            document.getElementById('login-btn').addEventListener('click', handleLogin);
-            document.getElementById('logout-btn').addEventListener('click', handleLogout);
-            
-            // User type selection
-            document.getElementById('passenger-type-btn').addEventListener('click', () => setUserType('passenger'));
-            document.getElementById('driver-type-btn').addEventListener('click', () => setUserType('driver'));
+            try {
+                // Check if elements exist before adding listeners
+                const loginBtn = document.getElementById('login-btn');
+                const registerBtn = document.getElementById('register-btn');
+                const logoutBtn = document.getElementById('logout-btn');
+                const profileBtn = document.getElementById('profile-btn');
+                const saveProfileBtn = document.getElementById('save-profile-btn');
+                const passengerTypeBtn = document.getElementById('passenger-type-btn');
+                const driverTypeBtn = document.getElementById('driver-type-btn');
+                const addPassengerRequestBtn = document.getElementById('add-passenger-request');
+                const searchDriversBtn = document.getElementById('search-drivers');
+                const addDriverScheduleBtn = document.getElementById('add-driver-schedule');
 
-            // Passenger events
-            document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
-            document.getElementById('search-drivers').addEventListener('click', searchDrivers);
+                // Auth events
+                if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+                if (registerBtn) registerBtn.addEventListener('click', handleRegister);
+                if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+                if (profileBtn) profileBtn.addEventListener('click', () => showSection('profile'));
+                if (saveProfileBtn) saveProfileBtn.addEventListener('click', saveProfile);
+                
+                // User type selection
+                if (passengerTypeBtn) passengerTypeBtn.addEventListener('click', () => setUserType('passenger'));
+                if (driverTypeBtn) driverTypeBtn.addEventListener('click', () => setUserType('driver'));
 
-            // Driver events
-            document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
+                // Passenger events
+                if (addPassengerRequestBtn) addPassengerRequestBtn.addEventListener('click', addPassengerRequest);
+                if (searchDriversBtn) searchDriversBtn.addEventListener('click', searchDrivers);
+
+                // Driver events
+                if (addDriverScheduleBtn) addDriverScheduleBtn.addEventListener('click', addDriverSchedule);
+
+            } catch (error) {
+                console.error('Event listener setup error:', error);
+            }
         }
 
         async function checkAuthState() {
             if (!supabaseClient) return;
 
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                updateAuthUI();
-                await loadUserData();
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    currentUser = session.user;
+                    updateAuthUI();
+                    await loadUserData();
+                }
+            } catch (error) {
+                console.error('Check auth state error:', error);
             }
         }
 
         async function handleLogin() {
-            const email = document.getElementById('email-input').value.trim();
-            if (!email) {
-                showMessage('请输入邮箱地址', 'error');
+            const emailInput = document.getElementById('email-input');
+            const passwordInput = document.getElementById('password-input');
+            
+            if (!emailInput || !passwordInput) {
+                showMessage('表单元素未找到', 'error');
+                return;
+            }
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!email || !password) {
+                showMessage('请输入邮箱和密码', 'error');
                 return;
             }
 
             const loginBtn = document.getElementById('login-btn');
-            loginBtn.textContent = '发送中...';
-            loginBtn.disabled = true;
+            if (loginBtn) {
+                loginBtn.textContent = '登录中...';
+                loginBtn.disabled = true;
+            }
 
             try {
-                const { error } = await supabaseClient.auth.signInWithOtp({
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
-                    options: {
-                        emailRedirectTo: window.location.origin
-                    }
+                    password: password
                 });
 
                 if (error) throw error;
-                showMessage('登录链接已发送到您的邮箱，请查收', 'success');
+                showMessage('登录成功！', 'success');
+                clearAuthForm();
             } catch (error) {
+                console.error('Login error:', error);
                 showMessage('登录失败: ' + error.message, 'error');
             } finally {
-                loginBtn.textContent = '登录';
-                loginBtn.disabled = false;
+                if (loginBtn) {
+                    loginBtn.textContent = '登录';
+                    loginBtn.disabled = false;
+                }
+            }
+        }
+
+        async function handleRegister() {
+            const emailInput = document.getElementById('email-input');
+            const passwordInput = document.getElementById('password-input');
+            
+            if (!emailInput || !passwordInput) {
+                showMessage('表单元素未找到', 'error');
+                return;
+            }
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!email || !password) {
+                showMessage('请输入邮箱和密码', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('密码长度至少需要6位', 'error');
+                return;
+            }
+
+            const registerBtn = document.getElementById('register-btn');
+            if (registerBtn) {
+                registerBtn.textContent = '注册中...';
+                registerBtn.disabled = true;
+            }
+
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+                
+                if (data.user && !data.session) {
+                    showMessage('注册成功！请检查邮箱并点击确认链接后再登录', 'success');
+                } else {
+                    showMessage('注册成功！', 'success');
+                }
+                clearAuthForm();
+            } catch (error) {
+                console.error('Register error:', error);
+                showMessage('注册失败: ' + error.message, 'error');
+            } finally {
+                if (registerBtn) {
+                    registerBtn.textContent = '注册';
+                    registerBtn.disabled = false;
+                }
             }
         }
 
         async function handleLogout() {
-            await supabaseClient.auth.signOut();
-            currentUser = null;
-            userType = null;
-            updateAuthUI();
-            hideAllSections();
+            try {
+                await supabaseClient.auth.signOut();
+                currentUser = null;
+                userProfile = null;
+                userType = null;
+                updateAuthUI();
+                hideAllSections();
+                showMessage('已退出登录', 'success');
+            } catch (error) {
+                console.error('Logout error:', error);
+                showMessage('退出失败', 'error');
+            }
         }
 
         function updateAuthUI() {
             const userStatus = document.getElementById('user-status');
+            const userId = document.getElementById('user-id');
             const loginForm = document.getElementById('login-form');
             const logoutBtn = document.getElementById('logout-btn');
+            const profileBtn = document.getElementById('profile-btn');
             const userTypeSection = document.getElementById('user-type-section');
 
             if (currentUser) {
-                userStatus.textContent = `已登录: ${currentUser.email}`;
-                loginForm.classList.add('hidden');
-                logoutBtn.classList.remove('hidden');
-                userTypeSection.classList.remove('hidden');
+                if (userStatus) userStatus.textContent = `已登录: ${currentUser.email}`;
+                if (userId) {
+                    userId.textContent = `ID: ${currentUser.id.substring(0, 8)}...`;
+                    userId.classList.remove('hidden');
+                }
+                if (loginForm) loginForm.classList.add('hidden');
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+                if (profileBtn) profileBtn.classList.remove('hidden');
+                if (userTypeSection) userTypeSection.classList.remove('hidden');
             } else {
-                userStatus.textContent = '未登录';
-                loginForm.classList.remove('hidden');
-                logoutBtn.classList.add('hidden');
-                userTypeSection.classList.add('hidden');
+                if (userStatus) userStatus.textContent = '未登录';
+                if (userId) userId.classList.add('hidden');
+                if (loginForm) loginForm.classList.remove('hidden');
+                if (logoutBtn) logoutBtn.classList.add('hidden');
+                if (profileBtn) profileBtn.classList.add('hidden');
+                if (userTypeSection) userTypeSection.classList.add('hidden');
             }
         }
 
@@ -286,12 +443,116 @@
         }
 
         function hideAllSections() {
-            ['passenger-section', 'driver-section'].forEach(id => {
+            ['passenger-section', 'driver-section', 'profile-section'].forEach(id => {
                 const section = document.getElementById(id);
                 if (section) {
                     section.classList.add('hidden');
                 }
             });
+        }
+
+        async function saveProfile() {
+            if (!currentUser) {
+                showMessage('请先登录', 'error');
+                return;
+            }
+
+            const nameInput = document.getElementById('profile-name');
+            const phoneInput = document.getElementById('profile-phone');
+            const idNumberInput = document.getElementById('profile-id-number');
+            const genderInput = document.getElementById('profile-gender');
+            const ageInput = document.getElementById('profile-age');
+            const bioInput = document.getElementById('profile-bio');
+
+            if (!nameInput || !phoneInput || !idNumberInput || !genderInput || !ageInput || !bioInput) {
+                showMessage('表单元素未找到', 'error');
+                return;
+            }
+
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            const idNumber = idNumberInput.value.trim();
+            const gender = genderInput.value;
+            const age = ageInput.value;
+            const bio = bioInput.value.trim();
+
+            if (!name || !phone || !idNumber) {
+                showMessage('请填写姓名、手机号和身份证号', 'error');
+                return;
+            }
+
+            const saveBtn = document.getElementById('save-profile-btn');
+            if (saveBtn) {
+                saveBtn.textContent = '保存中...';
+                saveBtn.disabled = true;
+            }
+
+            try {
+                const profileData = {
+                    user_id: currentUser.id,
+                    full_name: name,
+                    phone: phone,
+                    id_number: idNumber,
+                    gender: gender || null,
+                    age: age ? parseInt(age) : null,
+                    bio: bio || null,
+                    updated_at: new Date().toISOString()
+                };
+
+                const { data, error } = await supabaseClient
+                    .from('user_profiles')
+                    .upsert(profileData)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                userProfile = data;
+                showMessage('个人资料保存成功', 'success');
+            } catch (error) {
+                console.error('Save profile error:', error);
+                showMessage('保存失败: ' + error.message, 'error');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.textContent = '保存资料';
+                    saveBtn.disabled = false;
+                }
+            }
+        }
+
+        async function loadUserProfile() {
+            if (!currentUser) return;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') throw error;
+
+                userProfile = data;
+                
+                if (userProfile) {
+                    // 填充表单
+                    const nameInput = document.getElementById('profile-name');
+                    const phoneInput = document.getElementById('profile-phone');
+                    const idNumberInput = document.getElementById('profile-id-number');
+                    const genderInput = document.getElementById('profile-gender');
+                    const ageInput = document.getElementById('profile-age');
+                    const bioInput = document.getElementById('profile-bio');
+
+                    if (nameInput) nameInput.value = userProfile.full_name || '';
+                    if (phoneInput) phoneInput.value = userProfile.phone || '';
+                    if (idNumberInput) idNumberInput.value = userProfile.id_number || '';
+                    if (genderInput) genderInput.value = userProfile.gender || '';
+                    if (ageInput) ageInput.value = userProfile.age || '';
+                    if (bioInput) bioInput.value = userProfile.bio || '';
+                }
+            } catch (error) {
+                console.error('加载个人资料失败:', error);
+            }
         }
 
         async function addPassengerRequest() {
@@ -300,12 +561,24 @@
                 return;
             }
 
-            const fromCity = document.getElementById('passenger-from').value.trim();
-            const toCity = document.getElementById('passenger-to').value.trim();
-            const date = document.getElementById('passenger-date').value;
-            const time = document.getElementById('passenger-time').value;
-            const seats = document.getElementById('passenger-seats').value;
-            const note = document.getElementById('passenger-note').value.trim();
+            const fromCityInput = document.getElementById('passenger-from');
+            const toCityInput = document.getElementById('passenger-to');
+            const dateInput = document.getElementById('passenger-date');
+            const timeInput = document.getElementById('passenger-time');
+            const seatsInput = document.getElementById('passenger-seats');
+            const noteInput = document.getElementById('passenger-note');
+
+            if (!fromCityInput || !toCityInput || !dateInput || !timeInput || !seatsInput || !noteInput) {
+                showMessage('表单元素未找到', 'error');
+                return;
+            }
+
+            const fromCity = fromCityInput.value.trim();
+            const toCity = toCityInput.value.trim();
+            const date = dateInput.value;
+            const time = timeInput.value;
+            const seats = seatsInput.value;
+            const note = noteInput.value.trim();
 
             if (!fromCity || !toCity || !date || !time || !seats) {
                 showMessage('请填写完整信息', 'error');
@@ -331,6 +604,7 @@
                 clearPassengerForm();
                 loadPassengerRequests();
             } catch (error) {
+                console.error('Add passenger request error:', error);
                 showMessage('发布失败: ' + error.message, 'error');
             }
         }
@@ -341,13 +615,26 @@
                 return;
             }
 
-            const fromCity = document.getElementById('driver-from').value.trim();
-            const toCity = document.getElementById('driver-to').value.trim();
-            const date = document.getElementById('driver-date').value;
-            const time = document.getElementById('driver-time').value;
-            const seats = document.getElementById('driver-seats').value;
-            const price = document.getElementById('driver-price').value;
-            const note = document.getElementById('driver-note').value.trim();
+            const fromCityInput = document.getElementById('driver-from');
+            const toCityInput = document.getElementById('driver-to');
+            const dateInput = document.getElementById('driver-date');
+            const timeInput = document.getElementById('driver-time');
+            const seatsInput = document.getElementById('driver-seats');
+            const priceInput = document.getElementById('driver-price');
+            const noteInput = document.getElementById('driver-note');
+
+            if (!fromCityInput || !toCityInput || !dateInput || !timeInput || !seatsInput || !priceInput || !noteInput) {
+                showMessage('表单元素未找到', 'error');
+                return;
+            }
+
+            const fromCity = fromCityInput.value.trim();
+            const toCity = toCityInput.value.trim();
+            const date = dateInput.value;
+            const time = timeInput.value;
+            const seats = seatsInput.value;
+            const price = priceInput.value;
+            const note = noteInput.value.trim();
 
             if (!fromCity || !toCity || !date || !time || !seats) {
                 showMessage('请填写完整信息', 'error');
@@ -374,246 +661,11 @@
                 clearDriverForm();
                 loadDriverSchedules();
             } catch (error) {
+                console.error('Add driver schedule error:', error);
                 showMessage('发布失败: ' + error.message, 'error');
             }
         }
 
         async function searchDrivers() {
-            const fromCity = document.getElementById('search-from').value.trim();
-            const toCity = document.getElementById('search-to').value.trim();
-            const date = document.getElementById('search-date').value;
-
-            let query = supabaseClient
-                .from('driver_schedules')
-                .select('*')
-                .gte('date', new Date().toISOString().split('T')[0])
-                .order('date')
-                .order('time');
-
-            if (fromCity) {
-                query = query.ilike('from_city', `%${fromCity}%`);
-            }
-            if (toCity) {
-                query = query.ilike('to_city', `%${toCity}%`);
-            }
-            if (date) {
-                query = query.eq('date', date);
-            }
-
-            try {
-                const { data, error } = await query;
-                if (error) throw error;
-
-                displayDriverResults(data);
-            } catch (error) {
-                showMessage('搜索失败: ' + error.message, 'error');
-            }
-        }
-
-        function displayDriverResults(results) {
-            const container = document.getElementById('driver-results');
-            container.innerHTML = '';
-
-            if (!results || results.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">没有找到符合条件的司机</p>';
-                return;
-            }
-
-            results.forEach(schedule => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-gray-200 rounded-md';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold">${schedule.from_city} → ${schedule.to_city}</h4>
-                            <p class="text-sm text-gray-600">日期: ${schedule.date} ${schedule.time}</p>
-                            <p class="text-sm text-gray-600">可载: ${schedule.available_seats}人</p>
-                            <p class="text-sm text-gray-600">价格: ¥${schedule.price_per_person || 0}/人</p>
-                            ${schedule.note ? `<p class="text-sm text-gray-500">${schedule.note}</p>` : ''}
-                        </div>
-                        <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700" 
-                                onclick="contactDriver('${schedule.user_id}')">
-                            联系司机
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function loadUserData() {
-            if (!currentUser) return;
-
-            if (userType === 'passenger') {
-                loadPassengerRequests();
-            } else if (userType === 'driver') {
-                loadDriverSchedules();
-            }
-        }
-
-        async function loadPassengerRequests() {
-            if (!currentUser) return;
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('passenger_requests')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-                displayPassengerRequests(data);
-            } catch (error) {
-                console.error('加载乘客请求失败:', error);
-            }
-        }
-
-        async function loadDriverSchedules() {
-            if (!currentUser) return;
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('driver_schedules')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('date')
-                    .order('time');
-
-                if (error) throw error;
-                displayDriverSchedules(data);
-            } catch (error) {
-                console.error('加载司机时间表失败:', error);
-            }
-        }
-
-        function displayPassengerRequests(requests) {
-            const container = document.getElementById('passenger-requests');
-            container.innerHTML = '';
-
-            if (!requests || requests.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">暂无行程需求</p>';
-                return;
-            }
-
-            requests.forEach(request => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-gray-200 rounded-md';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold">${request.from_city} → ${request.to_city}</h4>
-                            <p class="text-sm text-gray-600">日期: ${request.date} ${request.time}</p>
-                            <p class="text-sm text-gray-600">需要: ${request.seats_needed}个座位</p>
-                            ${request.note ? `<p class="text-sm text-gray-500">${request.note}</p>` : ''}
-                        </div>
-                        <button class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700" 
-                                onclick="deletePassengerRequest('${request.id}')">
-                            删除
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function displayDriverSchedules(schedules) {
-            const container = document.getElementById('driver-schedules');
-            container.innerHTML = '';
-
-            if (!schedules || schedules.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">暂无行程时间表</p>';
-                return;
-            }
-
-            schedules.forEach(schedule => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-gray-200 rounded-md';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold">${schedule.from_city} → ${schedule.to_city}</h4>
-                            <p class="text-sm text-gray-600">日期: ${schedule.date} ${schedule.time}</p>
-                            <p class="text-sm text-gray-600">可载: ${schedule.available_seats}人</p>
-                            <p class="text-sm text-gray-600">价格: ¥${schedule.price_per_person || 0}/人</p>
-                            ${schedule.note ? `<p class="text-sm text-gray-500">${schedule.note}</p>` : ''}
-                        </div>
-                        <button class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700" 
-                                onclick="deleteDriverSchedule('${schedule.id}')">
-                            删除
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function deletePassengerRequest(id) {
-            if (!confirm('确定要删除这个行程需求吗？')) return;
-
-            try {
-                const { error } = await supabaseClient
-                    .from('passenger_requests')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-                showMessage('删除成功', 'success');
-                loadPassengerRequests();
-            } catch (error) {
-                showMessage('删除失败: ' + error.message, 'error');
-            }
-        }
-
-        async function deleteDriverSchedule(id) {
-            if (!confirm('确定要删除这个时间表吗？')) return;
-
-            try {
-                const { error } = await supabaseClient
-                    .from('driver_schedules')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-                showMessage('删除成功', 'success');
-                loadDriverSchedules();
-            } catch (error) {
-                showMessage('删除失败: ' + error.message, 'error');
-            }
-        }
-
-        function contactDriver(driverId) {
-            showMessage('联系功能待开发，司机ID: ' + driverId, 'info');
-        }
-
-        function clearPassengerForm() {
-            ['passenger-from', 'passenger-to', 'passenger-date', 'passenger-time', 'passenger-seats', 'passenger-note'].forEach(id => {
-                document.getElementById(id).value = '';
-            });
-        }
-
-        function clearDriverForm() {
-            ['driver-from', 'driver-to', 'driver-date', 'driver-time', 'driver-seats', 'driver-price', 'driver-note'].forEach(id => {
-                document.getElementById(id).value = '';
-            });
-        }
-
-        function showMessage(message, type) {
-            const alertClass = {
-                'success': 'bg-green-100 border-green-400 text-green-700',
-                'error': 'bg-red-100 border-red-400 text-red-700',
-                'info': 'bg-blue-100 border-blue-400 text-blue-700'
-            };
-
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `fixed top-4 right-4 z-50 px-4 py-3 border rounded ${alertClass[type]} max-w-sm`;
-            messageDiv.textContent = message;
-
-            document.body.appendChild(messageDiv);
-
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 3000);
-        }
-    </script>
-</body>
-</html>
+            const searchFromInput = document.getElementById('search-from');
+            const searchToInput =
