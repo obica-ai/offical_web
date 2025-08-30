@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>邮箱验证结果</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-md mx-auto mt-20 bg-white border rounded-xl shadow-sm p-6 text-center">
+    <div id="icon" class="text-5xl mb-3">🔄</div>
+    <h1 id="title" class="text-xl font-semibold mb-1">正在确认邮箱链接…</h1>
+    <p id="desc" class="text-gray-600 text-sm">请稍等片刻</p>
+
+    <div class="mt-6 flex justify-center gap-3">
+      <a id="btnHome" href="/" class="px-4 py-2 rounded-md border">返回首页</a>
+      <a id="btnApp"  href="/index.html" class="px-4 py-2 rounded-md bg-blue-600 text-white">进入应用</a>
+    </div>
+  </div>
+
+  <script>
+    // —— 可选：支持 ?sbUrl=...&sbKey=... 覆盖（与你 index.html 的做法一致） ——
+    (function(){
+      try{
+        const usp = new URLSearchParams(location.search);
+        const u = usp.get('sbUrl'); const k = usp.get('sbKey');
+        if(u && k){ window.SUPABASE_URL = u; window.SUPABASE_ANON_KEY = k; }
+      }catch(e){}
+    })();
+
+    // —— 替换为你的项目 ——（和 index.html 保持一致）
+    const SUPABASE_URL = window.SUPABASE_URL || 'https://ddycdlhhgezffmybssvw.supabase.co';
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo';
+
+    const sb = (typeof supabase!=='undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    const $ = (id)=>document.getElementById(id);
+    function show(ok, title, desc){
+      $('icon').textContent = ok ? '✅' : '⚠️';
+      $('title').textContent = title;
+      $('desc').textContent  = desc || '';
+    }
+
+    (async function main(){
+      try{
+        // 处理两种回调形式：
+        // 1) OAuth/部分邮件：?code=...（需要 exchangeCodeForSession）
+        // 2) Magic link/邮件确认：URL hash 带 access_token / refresh_token（库会自动解析）
+        const usp = new URLSearchParams(location.search);
+        const code = usp.get('code');
+        const errd = usp.get('error_description');
+
+        if (errd) {
+          show(false, '验证失败', decodeURIComponent(errd));
+          return;
+        }
+
+        if (code) {
+          // 以 code 交换会话（如某些邮件/SSO 流程）
+          try {
+            await sb.auth.exchangeCodeForSession({ code });
+          } catch (e) {
+            show(false, '验证失败', e.message || 'exchangeCodeForSession 出错');
+            return;
+          }
+        } else {
+          // 没有 code：若是 magic link / confirm email，supabase-js 会自动从 URL hash 恢复会话
+          // 稍等一拍再读会话
+          await new Promise(r=>setTimeout(r, 50));
+        }
+
+        const { data: { session }, error } = await sb.auth.getSession();
+        if (error) throw error;
+
+        // 根据回调类型展示不同提示（可从 hash 或 query 里取 type）
+        const hash = new URLSearchParams(location.hash.substring(1));
+        const typ  = hash.get('type') || usp.get('type') || 'verified';
+
+        const email = session?.user?.email;
+        const who = email ? `（${email}）` : '';
+
+        if (session) {
+          if (typ === 'signup') {
+            show(true, '注册邮箱验证成功 🎉', '你的邮箱已确认'+who+'，可以开始使用啦');
+          } else if (typ === 'magiclink') {
+            show(true, '登录成功 🎉', '已通过邮箱链接完成登录'+who);
+          } else if (typ === 'recovery') {
+            show(true, '密码重置成功 ✅', '你已通过邮件链接完成登录'+who);
+          } else {
+            show(true, '邮箱验证成功 🎉', '会话已建立'+who);
+          }
+        } else {
+          show(false, '未能建立会话', '链接可能已失效或已被使用，请重新发送登录/验证邮件');
+        }
+      }catch(e){
+        show(false, '验证失败', e.message || '未知错误');
+      }
+    })();
+  </script>
+</body>
+</html>
