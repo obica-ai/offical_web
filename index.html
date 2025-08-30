@@ -63,7 +63,7 @@
     </section>
 
     <!-- 公告栏（新增） -->
-<!--     <section id="board-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+      <section id="board-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">公告栏</h3>
         <div class="flex items-center gap-2">
@@ -88,7 +88,7 @@
         </div>
       </div>
       <p class="text-xs text-gray-500 mt-4">提示：已开启 Realtime 时，公告栏会自动更新；否则可点“刷新”。</p>
-    </section> -->
+    </section> 
 
     <!-- 个人资料 -->
     <section id="profile-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
@@ -676,7 +676,7 @@
     }
 
     // —— 初始化与事件绑定 ——
-    // document.getElementById('nav-board').addEventListener('click', ()=>{ showSection('board'); loadBoard(); });
+    document.getElementById('nav-board').addEventListener('click', ()=>{ showSection('board'); loadBoard(); });
     document.getElementById('nav-passenger').addEventListener('click', ()=>{
       showSection('passenger');
       loadDriversList();
@@ -699,8 +699,8 @@
     document.getElementById('btnSaveProfile').addEventListener('click', saveProfileButton);
     document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
     document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
-    // document.getElementById('btnBoardRefresh').addEventListener('click', loadBoard);
-    // document.getElementById('board-filter').addEventListener('input', (e)=> renderBoard(e.target.value.trim()));
+    document.getElementById('btnBoardRefresh').addEventListener('click', loadBoard);
+    document.getElementById('board-filter').addEventListener('input', (e)=> renderBoard(e.target.value.trim()));
 
     // 会话恢复
     (async ()=>{
