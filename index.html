@@ -32,6 +32,36 @@
     </div>
   </header>
 
+<!-- 角色/资料设置对话框 -->
+<dialog id="roleDialog" class="rounded-2xl p-0 w-[min(560px,92vw)]">
+  <form method="dialog" class="rounded-2xl bg-white border border-slate-200 shadow-lg overflow-hidden">
+    <div class="px-6 py-4 border-b flex items-center justify-between">
+      <h4 class="font-semibold">完善资料 · 选择你的角色</h4>
+      <button class="px-2 py-1" value="close" aria-label="关闭">✕</button>
+    </div>
+    <div class="p-6 grid sm:grid-cols-2 gap-4">
+      <div class="sm:col-span-2 text-sm text-slate-600">请选择你在平台中的身份（可选“同时”）：</div>
+      <div class="sm:col-span-2 flex gap-4 items-center text-sm">
+        <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="passenger"> 乘客</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="driver"> 司机</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="both" checked> 同时</label>
+      </div>
+      <div>
+        <label>显示名称（给对方看到）</label>
+        <input id="prof_name" placeholder="例如：王师傅 / Lena" />
+      </div>
+      <div>
+        <label>联系方式（仅在撮合后可见）</label>
+        <input id="prof_phone" placeholder="手机号或微信号" />
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t flex items-center justify-end gap-3 bg-slate-50">
+      <button class="rounded-xl border border-slate-300 px-4 py-2 text-sm" value="cancel">稍后</button>
+      <button id="btnSaveProfile" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold" value="default">保存</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- 配置状态提示 -->
 <div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
@@ -49,7 +79,9 @@
       </div>
       <div class="flex items-center gap-2">
         <span id="authStatus" class="text-sm text-slate-600">未登录</span>
-        <button id="btnSignOut" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>
+        <span id="roleBadge" class="hidden inline-flex items-center text-xs rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5"></span>
+        <button id="btnEditProfile" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">资料/角色</button>
+        <button id="btnSignOut" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>
       </div>
     </div>
     <div id="authBox" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2">
@@ -227,6 +259,8 @@ SUPABASE_ANON_KEY=${(SUPABASE_ANON_KEY||'').slice(0,8)}...`;
 const el = (id)=>document.getElementById(id);
 const ui = {
   authStatus: el('authStatus'), authBox: el('authBox'), btnSignOut: el('btnSignOut'), btnMagic: el('btnMagic'), authEmail: el('authEmail'),
+  roleBadge: el('roleBadge'), btnEditProfile: el('btnEditProfile'), roleDialog: document.getElementById('roleDialog'), btnSaveProfile: document.getElementById('btnSaveProfile'),
+  prof_name: el('prof_name'), prof_phone: el('prof_phone'),
   // passenger need
   need_from: el('need_from'), need_to: el('need_to'), need_date: el('need_date'), need_seats: el('need_seats'), need_note: el('need_note'),
   btnAddNeed: el('btnAddNeed'), myNeeds: el('myNeeds'), btnSearchSlots: el('btnSearchSlots'), slotResults: el('slotResults'),
@@ -238,6 +272,7 @@ const ui = {
 
 // 简易状态
 let currentUser = null;
+let currentProfile = null; // { id, role, full_name, phone }
 
 function requireLogin(){ if(!currentUser){ alert('请先登录 / 注册'); return false;} return true; }
 
@@ -257,7 +292,12 @@ ui.btnSignOut.addEventListener('click', async ()=>{
 sb.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user || null;
   ui.authStatus.textContent = currentUser ? `已登录：${currentUser.email}` : '未登录';
-  ui.btnSignOut.classList.toggle('hidden', !currentUser);
+  const authed = !!currentUser;
+  ui.btnSignOut.classList.toggle('hidden', !authed);
+  ui.btnEditProfile.classList.toggle('hidden', !authed);
+  ui.authBox.classList.toggle('hidden', authed);
+  if(currentUser){ await loadProfile(); loadMyNeeds(); loadMySlots(); }
+});
   ui.authBox.classList.toggle('hidden', !!currentUser);
   if(currentUser){ loadMyNeeds(); loadMySlots(); }
 });
@@ -348,14 +388,47 @@ function renderList(container, rows, mine=false, onDel){
   });
 }
 
-// 初始化：如果通过重定向回到本页，supabase 会自动恢复会话
+// 资料加载与保存
+async function loadProfile(){
+  const { data, error } = await sb.from('profiles').select('*').maybeSingle();
+  if(error && error.code!=='PGRST116'){ console.error(error); return; } // PGRST116 = no rows
+  currentProfile = data || null;
+  // 展示徽章
+  const role = currentProfile?.role || 'both';
+  ui.roleBadge.textContent = `角色：${role}`;
+  ui.roleBadge.classList.toggle('hidden', !currentUser);
+  // 若无资料，弹窗引导
+  if(!currentProfile){ ui.roleDialog.showModal(); }
+  // 预填
+  ui.prof_name.value = currentProfile?.full_name || '';
+  ui.prof_phone.value = currentProfile?.phone || '';
+  // 根据角色调整首屏（可选：滚动到对应区域）
+}
+
+ui.btnEditProfile.addEventListener('click', ()=> ui.roleDialog.showModal());
+
+ui.btnSaveProfile.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  if(!requireLogin()) return;
+  const role = (document.querySelector('input[name="role"]:checked')||{}).value || 'both';
+  const row = { role, full_name: ui.prof_name.value.trim()||null, phone: ui.prof_phone.value.trim()||null };
+  const { data, error } = await sb.from('profiles').upsert(row).select().single();
+  if(error){ alert('保存失败：'+error.message); return; }
+  currentProfile = data;
+  ui.roleBadge.textContent = `角色：${data.role}`;
+  ui.roleDialog.close();
+});
+
+// 初始化会话恢复
 (async ()=>{
   const { data:{ session } } = await sb.auth.getSession();
   currentUser = session?.user || null;
   ui.authStatus.textContent = currentUser ? `已登录：${currentUser.email}` : '未登录';
-  ui.btnSignOut.classList.toggle('hidden', !currentUser);
-  ui.authBox.classList.toggle('hidden', !!currentUser);
-  if(currentUser){ loadMyNeeds(); loadMySlots(); }
+  const authed = !!currentUser;
+  ui.btnSignOut.classList.toggle('hidden', !authed);
+  ui.btnEditProfile.classList.toggle('hidden', !authed);
+  ui.authBox.classList.toggle('hidden', authed);
+  if(currentUser){ await loadProfile(); loadMyNeeds(); loadMySlots(); }
 })();
 </script>
 </body>
