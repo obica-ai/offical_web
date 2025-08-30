@@ -1,504 +1,619 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>城际同行平台 · 乘客&司机（云端版）</title>
-  <meta name="description" content="两类用户（乘客/司机）使用同一平台：乘客发布需求，司机发布空闲班次。使用 Supabase（Postgres+Auth+RLS）作为后端数据库。" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <style>
-    .fade-in { animation: fadeIn .5s ease both; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
-    input, select, textarea{ border-radius: 0.75rem; border:1px solid #cbd5e1; padding: .5rem .75rem; outline: none; }
-    input:focus, select:focus, textarea:focus{ box-shadow: 0 0 0 2px #000; }
-    label{ font-size: .9rem; font-weight: 600; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城际同行平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        .fade-in { 
+            animation: fadeIn 0.5s ease-in-out; 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        input, select, textarea {
+            transition: all 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            ring-2 ring-blue-500 ring-opacity-50;
+            border-color: #3b82f6;
+        }
+    </style>
 </head>
-<body class="antialiased text-slate-800 bg-slate-50 min-h-screen">
-  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex h-16 items-center justify-between">
-        <div class="inline-flex items-center gap-2 font-semibold">
-          <span class="inline-block h-8 w-8 rounded-2xl bg-black"></span>
-          <span>城际同行</span>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg"></div>
+                    <h1 class="text-xl font-bold text-gray-900">城际同行</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <button onclick="showSection('passenger')" class="text-gray-600 hover:text-gray-900">乘客</button>
+                    <button onclick="showSection('driver')" class="text-gray-600 hover:text-gray-900">司机</button>
+                </nav>
+            </div>
         </div>
-        <nav class="hidden md:flex items-center gap-6 text-sm">
-          <a href="#passenger" class="hover:text-black">乘客</a>
-          <a href="#driver" class="hover:text-black">司机</a>
-          <a href="#how" class="hover:text-black">使用说明</a>
-        </nav>
-      </div>
-    </div>
-  </header>
+    </header>
 
-<!-- 角色/资料设置对话框 -->
-<dialog id="roleDialog" class="rounded-2xl p-0 w-[min(560px,92vw)]">
-  <form method="dialog" class="rounded-2xl bg-white border border-slate-200 shadow-lg overflow-hidden">
-    <div class="px-6 py-4 border-b flex items-center justify-between">
-      <h4 class="font-semibold">完善资料 · 选择你的角色</h4>
-      <button class="px-2 py-1" value="close" aria-label="关闭">✕</button>
-    </div>
-    <div class="p-6 grid sm:grid-cols-2 gap-4">
-      <div class="sm:col-span-2 text-sm text-slate-600">请选择你在平台中的身份（可选"同时"）：</div>
-      <div class="sm:col-span-2 flex gap-4 items-center text-sm">
-        <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="passenger"> 乘客</label>
-        <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="driver"> 司机</label>
-        <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="both" checked> 同时</label>
-      </div>
-      <div>
-        <label>显示名称（给对方看到）</label>
-        <input id="prof_name" placeholder="例如：王师傅 / Lena" />
-      </div>
-      <div>
-        <label>联系方式（仅在撮合后可见）</label>
-        <input id="prof_phone" placeholder="手机号或微信号" />
-      </div>
-    </div>
-    <div class="px-6 py-4 border-t flex items-center justify-end gap-3 bg-slate-50">
-      <button class="rounded-xl border border-slate-300 px-4 py-2 text-sm" value="cancel">稍后</button>
-      <button id="btnSaveProfile" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold" value="default">保存</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- 配置状态提示 -->
-<div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
-    未检测到有效的 Supabase 配置。请设置 <code>window.SUPABASE_URL</code> 与 <code>window.SUPABASE_ANON_KEY</code>，或在地址栏追加 <code>?sbUrl=...&sbKey=...</code>。
-  </div>
-</div>
-
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-  <!-- Auth -->
-  <section class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm mb-8">
-    <div class="flex items-center justify-between flex-wrap gap-3">
-      <div>
-        <h2 class="text-lg font-bold">登录 / 注册</h2>
-        <p class="text-sm text-slate-600">使用邮箱一键登录（Magic Link）。登录后可发布与管理你的数据。</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <span id="authStatus" class="text-sm text-slate-600">未登录</span>
-        <span id="roleBadge" class="hidden inline-flex items-center text-xs rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5"></span>
-        <button id="btnEditProfile" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">资料/角色</button>
-        <button id="btnSignOut" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>
-      </div>
-    </div>
-    <div id="authBox" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2">
-      <input id="authEmail" type="email" placeholder="you@example.com" />
-      <button id="btnMagic" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">发送登录链接</button>
-    </div>
-    <p class="text-xs text-slate-500 mt-2">* 第一次登录会自动创建账号；邮箱里点击 Magic Link 即可返回本页登录。</p>
-  </section>
-
-  <div class="grid lg:grid-cols-3 gap-8">
-    <!-- 左：乘客需求 -->
-    <section class="lg:col-span-2 space-y-8">
-      <div id="passenger" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
-        <h2 class="text-xl font-bold">乘客 · 发布需求 & 搜索司机</h2>
-        <p class="mt-1 text-sm text-slate-600">发布你的出行需求（出发/到达/日期/座位），也可按条件搜索司机空闲班次。</p>
-
-        <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label>出发城市</label>
-            <input id="need_from" placeholder="上海" />
-          </div>
-          <div>
-            <label>到达城市</label>
-            <input id="need_to" placeholder="杭州" />
-          </div>
-          <div>
-            <label>日期</label>
-            <input id="need_date" type="date" />
-          </div>
-          <div>
-            <label>需要座位</label>
-            <input id="need_seats" type="number" min="1" value="1" />
-          </div>
-          <div class="lg:col-span-4">
-            <label>备注</label>
-            <input id="need_note" placeholder="行李/上车点/时间弹性等" />
-          </div>
-          <div class="sm:col-span-2 lg:col-span-4 flex items-end justify-end gap-2">
-            <button id="btnAddNeed" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">+ 发布需求</button>
-            <button id="btnSearchSlots" class="rounded-xl border border-slate-300 px-4 py-2 text-sm">按条件搜索司机班次</button>
-          </div>
+    <!-- Auth Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div id="auth-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-semibold">用户登录</h2>
+                    <p class="text-gray-600 text-sm">请登录后使用平台功能</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="user-status" class="text-sm text-gray-600">未登录</span>
+                    <button id="logout-btn" class="hidden px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">退出</button>
+                </div>
+            </div>
+            
+            <div id="login-form" class="mt-4 flex space-x-2">
+                <input 
+                    id="email-input" 
+                    type="email" 
+                    placeholder="输入邮箱地址" 
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <button 
+                    id="login-btn" 
+                    class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    登录
+                </button>
+            </div>
         </div>
 
-        <div class="mt-6">
-          <h3 class="font-semibold">符合条件的司机班次</h3>
-          <div id="slotResults" class="mt-3 grid gap-3"></div>
+        <!-- User Type Selection -->
+        <div id="user-type-section" class="hidden bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-4">选择用户类型</h3>
+            <div class="flex space-x-4">
+                <button 
+                    id="passenger-type-btn" 
+                    class="px-6 py-3 border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300"
+                >
+                    我是乘客
+                </button>
+                <button 
+                    id="driver-type-btn" 
+                    class="px-6 py-3 border border-gray-300 rounded-md hover:bg-green-50 hover:border-green-300"
+                >
+                    我是司机
+                </button>
+            </div>
         </div>
 
-        <div class="mt-6">
-          <h3 class="font-semibold">我发布的乘客需求</h3>
-          <div id="myNeeds" class="mt-3 grid gap-3"></div>
-        </div>
-      </div>
+        <!-- Passenger Section -->
+        <div id="passenger-section" class="hidden">
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-xl font-bold mb-4">乘客 - 发布行程需求</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <input id="passenger-from" type="text" placeholder="出发城市" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="passenger-to" type="text" placeholder="目的城市" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="passenger-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="passenger-time" type="time" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="passenger-seats" type="number" placeholder="需要座位数" min="1" max="8" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <textarea id="passenger-note" placeholder="备注信息" class="px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                </div>
+                <button id="add-passenger-request" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">发布需求</button>
+            </div>
 
-      <!-- 司机面板 -->
-      <div id="driver" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
-        <h2 class="text-xl font-bold">司机 · 发布空闲班次</h2>
-        <p class="mt-1 text-sm text-slate-600">填写你的行程（出发/到达/日期/时间/座位/备注），供乘客搜索预约。</p>
+            <!-- Search Available Drivers -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">搜索可用司机</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <input id="search-from" type="text" placeholder="出发城市" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="search-to" type="text" placeholder="目的城市" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="search-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <button id="search-drivers" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">搜索司机</button>
+                <div id="driver-results" class="mt-4 space-y-3"></div>
+            </div>
 
-        <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <div>
-            <label>出发城市</label>
-            <input id="slot_from" placeholder="上海" />
-          </div>
-          <div>
-            <label>到达城市</label>
-            <input id="slot_to" placeholder="杭州" />
-          </div>
-          <div>
-            <label>日期</label>
-            <input id="slot_date" type="date" />
-          </div>
-          <div>
-            <label>时间</label>
-            <input id="slot_time" type="time" />
-          </div>
-          <div>
-            <label>可用座位</label>
-            <input id="slot_seats" type="number" min="1" value="3" />
-          </div>
-          <div>
-            <label>备注</label>
-            <input id="slot_note" placeholder="上门接/中途站点等" />
-          </div>
-          <div class="sm:col-span-2 lg:col-span-6 flex items-end justify-end">
-            <button id="btnAddSlot" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">+ 发布空闲班次</button>
-          </div>
+            <!-- My Requests -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold mb-4">我的行程需求</h3>
+                <div id="passenger-requests" class="space-y-3"></div>
+            </div>
         </div>
 
-        <div class="mt-6">
-          <h3 class="font-semibold">我发布的司机班次</h3>
-          <div id="mySlots" class="mt-3 grid gap-3"></div>
+        <!-- Driver Section -->
+        <div id="driver-section" class="hidden">
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-xl font-bold mb-4">司机 - 发布可用时间表</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <input id="driver-from" type="text" placeholder="出发城市" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="driver-to" type="text" placeholder="目的城市" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="driver-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="driver-time" type="time" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="driver-seats" type="number" placeholder="可载人数" min="1" max="8" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <input id="driver-price" type="number" placeholder="每人价格(元)" min="0" class="px-3 py-2 border border-gray-300 rounded-md">
+                    <textarea id="driver-note" placeholder="备注信息" class="px-3 py-2 border border-gray-300 rounded-md col-span-full"></textarea>
+                </div>
+                <button id="add-driver-schedule" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">发布时间表</button>
+            </div>
+
+            <!-- My Schedules -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold mb-4">我的行程时间表</h3>
+                <div id="driver-schedules" class="space-y-3"></div>
+            </div>
         </div>
-      </div>
-    </section>
-
-    <!-- 右：说明/状态 -->
-    <aside class="space-y-4">
-      <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-        <h3 class="font-semibold">后端：Supabase</h3>
-        <ul class="mt-2 text-sm text-slate-600 list-disc list-inside space-y-1">
-          <li>Auth：邮箱 Magic Link</li>
-          <li>DB：Postgres（RLS 行级权限）</li>
-          <li>前端：supabase-js v2 直接调用</li>
-        </ul>
-      </div>
-      <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm text-sm text-slate-600">
-        <p class="mb-2 font-semibold">环境变量（请替换）</p>
-        <code id="envPreview" class="text-xs break-all">SUPABASE_URL=（你的项目URL）
-SUPABASE_ANON_KEY=（你的匿名Key）</code>
-      </div>
-    </aside>
-  </div>
-</main>
-
-<footer class="border-t border-slate-200">
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
-    <p>© <span id="year"></span> 城际同行</p>
-    <div class="flex items-center gap-4">
-      <a class="hover:text-black" href="#">隐私政策（示例）</a>
-      <a class="hover:text-black" href="#">使用条款（示例）</a>
     </div>
-  </div>
-</footer>
 
-<template id="tplCard">
-  <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-    <div class="text-sm flex items-center justify-between gap-3">
-      <div>
-        <div class="font-semibold"><span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span></div>
-        <div class="text-slate-600 mt-1">座位：<span data-seats></span> · <span data-note></span></div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button data-del class="hidden rounded-lg border border-slate-300 px-2 py-1 text-xs">删除</button>
-      </div>
-    </div>
-  </div>
-</template>
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://ddycdlhhgezffmybssvw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo';
+        
+        // Initialize Supabase client
+        let supabaseClient;
+        let currentUser = null;
+        let userType = null;
 
-<script>
-// Wait for Supabase to load
-function initApp() {
-  if (typeof supabase === 'undefined') {
-    setTimeout(initApp, 100);
-    return;
-  }
+        // Initialize app when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
 
-// ======= Supabase 初始化 =======
-// 支持通过 URL 参数快速注入：?sbUrl=...&sbKey=...
-(function injectEnvFromQuery(){
-  try{
-    const usp = new URLSearchParams(location.search);
-    const u = usp.get('sbUrl'); const k = usp.get('sbKey');
-    if(u && k){ window.SUPABASE_URL = u; window.SUPABASE_ANON_KEY = k; }
-  }catch(e){}
-})();
+        function initializeApp() {
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                setupEventListeners();
+                checkAuthState();
+                
+                // Listen for auth state changes
+                supabaseClient.auth.onAuthStateChange((event, session) => {
+                    if (event === 'SIGNED_IN') {
+                        currentUser = session.user;
+                        updateAuthUI();
+                    } else if (event === 'SIGNED_OUT') {
+                        currentUser = null;
+                        userType = null;
+                        updateAuthUI();
+                        hideAllSections();
+                    }
+                });
+            } catch (error) {
+                console.error('初始化失败:', error);
+                showMessage('初始化失败，请检查配置', 'error');
+            }
+        }
 
-const SUPABASE_URL = window.SUPABASE_URL || 'https://ddycdlhhgezffmybssvw.supabase.co';
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        function setupEventListeners() {
+            // Auth events
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            
+            // User type selection
+            document.getElementById('passenger-type-btn').addEventListener('click', () => setUserType('passenger'));
+            document.getElementById('driver-type-btn').addEventListener('click', () => setUserType('driver'));
 
-// 年份与环境预览
-document.getElementById('year').textContent = new Date().getFullYear();
-document.getElementById('envPreview').textContent = `SUPABASE_URL=${SUPABASE_URL}
-SUPABASE_ANON_KEY=${(SUPABASE_ANON_KEY||'').slice(0,8)}...`;
+            // Passenger events
+            document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
+            document.getElementById('search-drivers').addEventListener('click', searchDrivers);
 
-// 配置检测
-(function(){
-  const bad = !SUPABASE_URL || SUPABASE_URL.includes('YOUR-PROJECT') || !/^https?:\/\//.test(SUPABASE_URL) || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY==='YOUR-ANON-KEY';
-  if(bad){ document.getElementById('statusBar').classList.remove('hidden'); }
-})();
+            // Driver events
+            document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
+        }
 
-// 元素引用
-const el = (id)=>document.getElementById(id);
-const ui = {
-  authStatus: el('authStatus'), authBox: el('authBox'), btnSignOut: el('btnSignOut'), btnMagic: el('btnMagic'), authEmail: el('authEmail'),
-  roleBadge: el('roleBadge'), btnEditProfile: el('btnEditProfile'), roleDialog: document.getElementById('roleDialog'), btnSaveProfile: document.getElementById('btnSaveProfile'),
-  prof_name: el('prof_name'), prof_phone: el('prof_phone'),
-  // passenger need
-  need_from: el('need_from'), need_to: el('need_to'), need_date: el('need_date'), need_seats: el('need_seats'), need_note: el('need_note'),
-  btnAddNeed: el('btnAddNeed'), myNeeds: el('myNeeds'), btnSearchSlots: el('btnSearchSlots'), slotResults: el('slotResults'),
-  // driver slots
-  slot_from: el('slot_from'), slot_to: el('slot_to'), slot_date: el('slot_date'), slot_time: el('slot_time'), slot_seats: el('slot_seats'), slot_note: el('slot_note'),
-  btnAddSlot: el('btnAddSlot'), mySlots: el('mySlots'),
-  tplCard: document.getElementById('tplCard'),
-};
+        async function checkAuthState() {
+            if (!supabaseClient) return;
 
-// 简易状态
-let currentUser = null;
-let currentProfile = null; // { id, role, full_name, phone }
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                updateAuthUI();
+                await loadUserData();
+            }
+        }
 
-function requireLogin(){ 
-  if(!currentUser){ 
-    alert('请先登录 / 注册'); 
-    return false;
-  } 
-  return true; 
-}
+        async function handleLogin() {
+            const email = document.getElementById('email-input').value.trim();
+            if (!email) {
+                showMessage('请输入邮箱地址', 'error');
+                return;
+            }
 
-// 登录：Magic Link
-ui.btnMagic.addEventListener('click', async ()=>{
-  const email = ui.authEmail.value.trim();
-  if(!email) return alert('请输入邮箱');
-  
-  try {
-    ui.btnMagic.disabled = true;
-    ui.btnMagic.textContent = '发送中...';
-    
-    const { error } = await sb.auth.signInWithOtp({ 
-      email, 
-      options: { 
-        emailRedirectTo: location.href 
-      }
-    });
-    
-    if(error) throw error;
-    alert('已发送登录链接到邮箱，请查收并点击登录。');
-  } catch(error) {
-    alert('发送失败：' + error.message);
-  } finally {
-    ui.btnMagic.disabled = false;
-    ui.btnMagic.textContent = '发送登录链接';
-  }
-});
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.textContent = '发送中...';
+            loginBtn.disabled = true;
 
-ui.btnSignOut.addEventListener('click', async ()=>{
-  await sb.auth.signOut();
-});
+            try {
+                const { error } = await supabaseClient.auth.signInWithOtp({
+                    email: email,
+                    options: {
+                        emailRedirectTo: window.location.origin
+                    }
+                });
 
-sb.auth.onAuthStateChange(async (_event, session) => {
-  currentUser = session?.user || null;
-  ui.authStatus.textContent = currentUser ? `已登录：${currentUser.email}` : '未登录';
-  const authed = !!currentUser;
-  ui.btnSignOut.classList.toggle('hidden', !authed);
-  ui.btnEditProfile.classList.toggle('hidden', !authed);
-  ui.authBox.classList.toggle('hidden', authed);
-  if(currentUser){ 
-    await loadProfile(); 
-    loadMyNeeds(); 
-    loadMySlots(); 
-  } else {
-    currentProfile = null;
-    ui.roleBadge.classList.add('hidden');
-    ui.myNeeds.innerHTML = '';
-    ui.mySlots.innerHTML = '';
-  }
-});
+                if (error) throw error;
+                showMessage('登录链接已发送到您的邮箱，请查收', 'success');
+            } catch (error) {
+                showMessage('登录失败: ' + error.message, 'error');
+            } finally {
+                loginBtn.textContent = '登录';
+                loginBtn.disabled = false;
+            }
+        }
 
-// ======= 乘客需求 CRUD =======
-async function loadMyNeeds(){
-  if(!currentUser) return;
-  const { data, error } = await sb.from('passenger_needs').select('*').order('created_at', { ascending:false });
-  if(error) return console.error(error);
-  renderList(ui.myNeeds, data, true, async (id)=>{
-    await sb.from('passenger_needs').delete().eq('id', id); 
-    loadMyNeeds();
-  });
-}
+        async function handleLogout() {
+            await supabaseClient.auth.signOut();
+            currentUser = null;
+            userType = null;
+            updateAuthUI();
+            hideAllSections();
+        }
 
-ui.btnAddNeed.addEventListener('click', async ()=>{
-  if(!requireLogin()) return;
-  const row = {
-    from_city: ui.need_from.value.trim(),
-    to_city: ui.need_to.value.trim(),
-    date: ui.need_date.value,
-    seats: parseInt(ui.need_seats.value||'1',10),
-    note: ui.need_note.value.trim(),
-  };
-  if(!row.from_city || !row.to_city || !row.date || !row.seats) return alert('请完整填写需求');
-  const { error } = await sb.from('passenger_needs').insert(row);
-  if(error) return alert('发布失败：'+error.message);
-  ui.need_note.value='';
-  await loadMyNeeds();
-});
+        function updateAuthUI() {
+            const userStatus = document.getElementById('user-status');
+            const loginForm = document.getElementById('login-form');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userTypeSection = document.getElementById('user-type-section');
 
-ui.btnSearchSlots.addEventListener('click', async ()=>{
-  const from = ui.need_from.value.trim();
-  const to = ui.need_to.value.trim();
-  const date = ui.need_date.value;
-  const seats = parseInt(ui.need_seats.value||'1',10);
-  let query = sb.from('driver_slots').select('*').gte('seats', seats);
-  if(from) query = query.ilike('from_city', `%${from}%`);
-  if(to) query = query.ilike('to_city', `%${to}%`);
-  if(date) query = query.eq('date', date);
-  const { data, error } = await query.order('date').order('time');
-  if(error) return alert('搜索失败：'+error.message);
-  renderList(ui.slotResults, data, false);
-});
+            if (currentUser) {
+                userStatus.textContent = `已登录: ${currentUser.email}`;
+                loginForm.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
+                userTypeSection.classList.remove('hidden');
+            } else {
+                userStatus.textContent = '未登录';
+                loginForm.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                userTypeSection.classList.add('hidden');
+            }
+        }
 
-// ======= 司机空闲班次 CRUD =======
-async function loadMySlots(){
-  if(!currentUser) return;
-  const { data, error } = await sb.from('driver_slots').select('*').order('date').order('time');
-  if(error) return console.error(error);
-  renderList(ui.mySlots, data, true, async (id)=>{
-    await sb.from('driver_slots').delete().eq('id', id); 
-    loadMySlots();
-  });
-}
+        function setUserType(type) {
+            userType = type;
+            showSection(type);
+            loadUserData();
+        }
 
-ui.btnAddSlot.addEventListener('click', async ()=>{
-  if(!requireLogin()) return;
-  const row = {
-    from_city: ui.slot_from.value.trim(),
-    to_city: ui.slot_to.value.trim(),
-    date: ui.slot_date.value,
-    time: ui.slot_time.value,
-    seats: parseInt(ui.slot_seats.value||'1',10),
-    note: ui.slot_note.value.trim(),
-  };
-  if(!row.from_city || !row.to_city || !row.date || !row.time || !row.seats) return alert('请完整填写班次');
-  const { error } = await sb.from('driver_slots').insert(row);
-  if(error) return alert('发布失败：'+error.message);
-  ui.slot_note.value='';
-  await loadMySlots();
-});
+        function showSection(sectionName) {
+            hideAllSections();
+            const section = document.getElementById(sectionName + '-section');
+            if (section) {
+                section.classList.remove('hidden');
+                section.classList.add('fade-in');
+            }
+        }
 
-// ======= 通用渲染 =======
-function renderList(container, rows, mine=false, onDel){
-  container.innerHTML='';
-  if(!rows || rows.length===0){ 
-    container.innerHTML='<div class="text-sm text-slate-600">暂无数据</div>'; 
-    return; 
-  }
-  rows.forEach(r=>{
-    const node = ui.tplCard.content.firstElementChild.cloneNode(true);
-    node.querySelector('[data-from]').textContent = r.from_city;
-    node.querySelector('[data-to]').textContent = r.to_city;
-    node.querySelector('[data-date]').textContent = r.date || '';
-    node.querySelector('[data-time]').textContent = r.time || '';
-    node.querySelector('[data-seats]').textContent = r.seats ?? '-';
-    node.querySelector('[data-note]').textContent = r.note || '';
-    if(mine){
-      const btnDel = node.querySelector('[data-del]');
-      btnDel.classList.remove('hidden');
-      btnDel.addEventListener('click', ()=> onDel && onDel(r.id));
-    }
-    container.appendChild(node);
-  });
-}
+        function hideAllSections() {
+            ['passenger-section', 'driver-section'].forEach(id => {
+                const section = document.getElementById(id);
+                if (section) {
+                    section.classList.add('hidden');
+                }
+            });
+        }
 
-// 资料加载与保存
-async function loadProfile(){
-  if(!currentUser) return;
-  const { data, error } = await sb.from('profiles').select('*').maybeSingle();
-  if(error && error.code!=='PGRST116'){ 
-    console.error(error); 
-    return; 
-  }
-  currentProfile = data || null;
-  
-  // 展示徽章
-  if(currentProfile) {
-    const role = currentProfile.role || 'both';
-    ui.roleBadge.textContent = `角色：${role}`;
-    ui.roleBadge.classList.remove('hidden');
-  }
-  
-  // 若无资料，弹窗引导
-  if(!currentProfile){ 
-    ui.roleDialog.showModal(); 
-  }
-  
-  // 预填
-  ui.prof_name.value = currentProfile?.full_name || '';
-  ui.prof_phone.value = currentProfile?.phone || '';
-}
+        async function addPassengerRequest() {
+            if (!currentUser) {
+                showMessage('请先登录', 'error');
+                return;
+            }
 
-ui.btnEditProfile.addEventListener('click', ()=> ui.roleDialog.showModal());
+            const fromCity = document.getElementById('passenger-from').value.trim();
+            const toCity = document.getElementById('passenger-to').value.trim();
+            const date = document.getElementById('passenger-date').value;
+            const time = document.getElementById('passenger-time').value;
+            const seats = document.getElementById('passenger-seats').value;
+            const note = document.getElementById('passenger-note').value.trim();
 
-ui.btnSaveProfile.addEventListener('click', async (e)=>{
-  e.preventDefault();
-  if(!requireLogin()) return;
-  
-  const role = (document.querySelector('input[name="role"]:checked')||{}).value || 'both';
-  const row = { 
-    role, 
-    full_name: ui.prof_name.value.trim()||null, 
-    phone: ui.prof_phone.value.trim()||null 
-  };
-  
-  const { data, error } = await sb.from('profiles').upsert(row).select().single();
-  if(error){ 
-    alert('保存失败：'+error.message); 
-    return; 
-  }
-  
-  currentProfile = data;
-  ui.roleBadge.textContent = `角色：${data.role}`;
-  ui.roleBadge.classList.remove('hidden');
-  ui.roleDialog.close();
-});
+            if (!fromCity || !toCity || !date || !time || !seats) {
+                showMessage('请填写完整信息', 'error');
+                return;
+            }
 
-// 初始化会话恢复
-(async ()=>{
-  const { data:{ session } } = await sb.auth.getSession();
-  currentUser = session?.user || null;
-  ui.authStatus.textContent = currentUser ? `已登录：${currentUser.email}` : '未登录';
-  const authed = !!currentUser;
-  ui.btnSignOut.classList.toggle('hidden', !authed);
-  ui.btnEditProfile.classList.toggle('hidden', !authed);
-  ui.authBox.classList.toggle('hidden', authed);
-  if(currentUser){ 
-    await loadProfile(); 
-    loadMyNeeds(); 
-    loadMySlots(); 
-  }
-})();
+            try {
+                const { error } = await supabaseClient
+                    .from('passenger_requests')
+                    .insert({
+                        user_id: currentUser.id,
+                        from_city: fromCity,
+                        to_city: toCity,
+                        date: date,
+                        time: time,
+                        seats_needed: parseInt(seats),
+                        note: note
+                    });
 
-}
+                if (error) throw error;
 
-// Start the app when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
-}
-</script>
+                showMessage('需求发布成功', 'success');
+                clearPassengerForm();
+                loadPassengerRequests();
+            } catch (error) {
+                showMessage('发布失败: ' + error.message, 'error');
+            }
+        }
+
+        async function addDriverSchedule() {
+            if (!currentUser) {
+                showMessage('请先登录', 'error');
+                return;
+            }
+
+            const fromCity = document.getElementById('driver-from').value.trim();
+            const toCity = document.getElementById('driver-to').value.trim();
+            const date = document.getElementById('driver-date').value;
+            const time = document.getElementById('driver-time').value;
+            const seats = document.getElementById('driver-seats').value;
+            const price = document.getElementById('driver-price').value;
+            const note = document.getElementById('driver-note').value.trim();
+
+            if (!fromCity || !toCity || !date || !time || !seats) {
+                showMessage('请填写完整信息', 'error');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('driver_schedules')
+                    .insert({
+                        user_id: currentUser.id,
+                        from_city: fromCity,
+                        to_city: toCity,
+                        date: date,
+                        time: time,
+                        available_seats: parseInt(seats),
+                        price_per_person: parseFloat(price) || 0,
+                        note: note
+                    });
+
+                if (error) throw error;
+
+                showMessage('时间表发布成功', 'success');
+                clearDriverForm();
+                loadDriverSchedules();
+            } catch (error) {
+                showMessage('发布失败: ' + error.message, 'error');
+            }
+        }
+
+        async function searchDrivers() {
+            const fromCity = document.getElementById('search-from').value.trim();
+            const toCity = document.getElementById('search-to').value.trim();
+            const date = document.getElementById('search-date').value;
+
+            let query = supabaseClient
+                .from('driver_schedules')
+                .select('*')
+                .gte('date', new Date().toISOString().split('T')[0])
+                .order('date')
+                .order('time');
+
+            if (fromCity) {
+                query = query.ilike('from_city', `%${fromCity}%`);
+            }
+            if (toCity) {
+                query = query.ilike('to_city', `%${toCity}%`);
+            }
+            if (date) {
+                query = query.eq('date', date);
+            }
+
+            try {
+                const { data, error } = await query;
+                if (error) throw error;
+
+                displayDriverResults(data);
+            } catch (error) {
+                showMessage('搜索失败: ' + error.message, 'error');
+            }
+        }
+
+        function displayDriverResults(results) {
+            const container = document.getElementById('driver-results');
+            container.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">没有找到符合条件的司机</p>';
+                return;
+            }
+
+            results.forEach(schedule => {
+                const div = document.createElement('div');
+                div.className = 'p-4 border border-gray-200 rounded-md';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold">${schedule.from_city} → ${schedule.to_city}</h4>
+                            <p class="text-sm text-gray-600">日期: ${schedule.date} ${schedule.time}</p>
+                            <p class="text-sm text-gray-600">可载: ${schedule.available_seats}人</p>
+                            <p class="text-sm text-gray-600">价格: ¥${schedule.price_per_person || 0}/人</p>
+                            ${schedule.note ? `<p class="text-sm text-gray-500">${schedule.note}</p>` : ''}
+                        </div>
+                        <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700" 
+                                onclick="contactDriver('${schedule.user_id}')">
+                            联系司机
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function loadUserData() {
+            if (!currentUser) return;
+
+            if (userType === 'passenger') {
+                loadPassengerRequests();
+            } else if (userType === 'driver') {
+                loadDriverSchedules();
+            }
+        }
+
+        async function loadPassengerRequests() {
+            if (!currentUser) return;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('passenger_requests')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                displayPassengerRequests(data);
+            } catch (error) {
+                console.error('加载乘客请求失败:', error);
+            }
+        }
+
+        async function loadDriverSchedules() {
+            if (!currentUser) return;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('driver_schedules')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('date')
+                    .order('time');
+
+                if (error) throw error;
+                displayDriverSchedules(data);
+            } catch (error) {
+                console.error('加载司机时间表失败:', error);
+            }
+        }
+
+        function displayPassengerRequests(requests) {
+            const container = document.getElementById('passenger-requests');
+            container.innerHTML = '';
+
+            if (!requests || requests.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">暂无行程需求</p>';
+                return;
+            }
+
+            requests.forEach(request => {
+                const div = document.createElement('div');
+                div.className = 'p-4 border border-gray-200 rounded-md';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold">${request.from_city} → ${request.to_city}</h4>
+                            <p class="text-sm text-gray-600">日期: ${request.date} ${request.time}</p>
+                            <p class="text-sm text-gray-600">需要: ${request.seats_needed}个座位</p>
+                            ${request.note ? `<p class="text-sm text-gray-500">${request.note}</p>` : ''}
+                        </div>
+                        <button class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700" 
+                                onclick="deletePassengerRequest('${request.id}')">
+                            删除
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function displayDriverSchedules(schedules) {
+            const container = document.getElementById('driver-schedules');
+            container.innerHTML = '';
+
+            if (!schedules || schedules.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">暂无行程时间表</p>';
+                return;
+            }
+
+            schedules.forEach(schedule => {
+                const div = document.createElement('div');
+                div.className = 'p-4 border border-gray-200 rounded-md';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold">${schedule.from_city} → ${schedule.to_city}</h4>
+                            <p class="text-sm text-gray-600">日期: ${schedule.date} ${schedule.time}</p>
+                            <p class="text-sm text-gray-600">可载: ${schedule.available_seats}人</p>
+                            <p class="text-sm text-gray-600">价格: ¥${schedule.price_per_person || 0}/人</p>
+                            ${schedule.note ? `<p class="text-sm text-gray-500">${schedule.note}</p>` : ''}
+                        </div>
+                        <button class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700" 
+                                onclick="deleteDriverSchedule('${schedule.id}')">
+                            删除
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function deletePassengerRequest(id) {
+            if (!confirm('确定要删除这个行程需求吗？')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('passenger_requests')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                showMessage('删除成功', 'success');
+                loadPassengerRequests();
+            } catch (error) {
+                showMessage('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteDriverSchedule(id) {
+            if (!confirm('确定要删除这个时间表吗？')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('driver_schedules')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                showMessage('删除成功', 'success');
+                loadDriverSchedules();
+            } catch (error) {
+                showMessage('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        function contactDriver(driverId) {
+            showMessage('联系功能待开发，司机ID: ' + driverId, 'info');
+        }
+
+        function clearPassengerForm() {
+            ['passenger-from', 'passenger-to', 'passenger-date', 'passenger-time', 'passenger-seats', 'passenger-note'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+        }
+
+        function clearDriverForm() {
+            ['driver-from', 'driver-to', 'driver-date', 'driver-time', 'driver-seats', 'driver-price', 'driver-note'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+        }
+
+        function showMessage(message, type) {
+            const alertClass = {
+                'success': 'bg-green-100 border-green-400 text-green-700',
+                'error': 'bg-red-100 border-red-400 text-red-700',
+                'info': 'bg-blue-100 border-blue-400 text-blue-700'
+            };
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fixed top-4 right-4 z-50 px-4 py-3 border rounded ${alertClass[type]} max-w-sm`;
+            messageDiv.textContent = message;
+
+            document.body.appendChild(messageDiv);
+
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
