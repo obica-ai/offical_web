@@ -341,6 +341,12 @@
       const city    = document.getElementById(prefix+'-city').value.trim();
       const state   = (document.getElementById(prefix+'-state').value || '').trim().toUpperCase();
       const postal  = normalizePostal(country, document.getElementById(prefix+'-postal').value);
+      if (prefix.includes('origin')) {
+        if (!/^[A-Za-z ]+$/.test(city)) {
+          return { ok:false, msg:'出发城市只能包含英文字母和空格' };
+        }
+      }
+
       if(!street1 || !city || !state || !postal) return {ok:false,msg:'请完整填写地址（街道/城市/州/邮编）'};
       if(!isValidPostal(country, postal)) return {ok:false,msg:'邮编格式不正确（US: 12345/12345-6789；CA: A1A 1A1）'};
       return {ok:true,data:{country,street1,street2:street2||null,city,state,postal}};
