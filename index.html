@@ -32,6 +32,13 @@
     </div>
   </header>
 
+<!-- 配置状态提示 -->
+<div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
+    未检测到有效的 Supabase 配置。请设置 <code>window.SUPABASE_URL</code> 与 <code>window.SUPABASE_ANON_KEY</code>，或在地址栏追加 <code>?sbUrl=...&sbKey=...</code>。
+  </div>
+</div>
+
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
   <!-- Auth -->
   <section class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm mb-8">
@@ -192,6 +199,15 @@ SUPABASE_ANON_KEY=（你的匿名Key）</code>
 
 <script>
 // ======= Supabase 初始化 =======
+// 支持通过 URL 参数快速注入：?sbUrl=...&sbKey=...
+(function injectEnvFromQuery(){
+  try{
+    const usp = new URLSearchParams(location.search);
+    const u = usp.get('sbUrl'); const k = usp.get('sbKey');
+    if(u && k){ window.SUPABASE_URL = u; window.SUPABASE_ANON_KEY = k; }
+  }catch(e){}
+})();
+
 const SUPABASE_URL = window.SUPABASE_URL || 'https://ddycdlhhgezffmybssvw.supabase.co'; // ← 替换
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo'; // ← 替换
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -199,7 +215,13 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // 年份与环境预览
 document.getElementById('year').textContent = new Date().getFullYear();
 document.getElementById('envPreview').textContent = `SUPABASE_URL=${SUPABASE_URL}
-SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY.slice(0,8)}...`;
+SUPABASE_ANON_KEY=${(SUPABASE_ANON_KEY||'').slice(0,8)}...`;
+
+// 配置检测
+(function(){
+  const bad = !SUPABASE_URL || SUPABASE_URL.includes('YOUR-PROJECT') || !/^https?:\/\//.test(SUPABASE_URL) || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY==='YOUR-ANON-KEY';
+  if(bad){ document.getElementById('statusBar').classList.remove('hidden'); }
+})();
 
 // 元素引用
 const el = (id)=>document.getElementById(id);
