@@ -6,7 +6,7 @@
   <title>城际同行平台 · 乘客&司机（云端版）</title>
   <meta name="description" content="两类用户（乘客/司机）使用同一平台：乘客发布需求，司机发布空闲班次。使用 Supabase（Postgres+Auth+RLS）作为后端数据库。" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     .fade-in { animation: fadeIn .5s ease both; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
@@ -40,7 +40,7 @@
       <button class="px-2 py-1" value="close" aria-label="关闭">✕</button>
     </div>
     <div class="p-6 grid sm:grid-cols-2 gap-4">
-      <div class="sm:col-span-2 text-sm text-slate-600">请选择你在平台中的身份（可选“同时”）：</div>
+      <div class="sm:col-span-2 text-sm text-slate-600">请选择你在平台中的身份（可选"同时"）：</div>
       <div class="sm:col-span-2 flex gap-4 items-center text-sm">
         <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="passenger"> 乘客</label>
         <label class="inline-flex items-center gap-2"><input type="radio" name="role" value="driver"> 司机</label>
@@ -81,7 +81,7 @@
         <span id="authStatus" class="text-sm text-slate-600">未登录</span>
         <span id="roleBadge" class="hidden inline-flex items-center text-xs rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5"></span>
         <button id="btnEditProfile" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">资料/角色</button>
-        <button id="btnSignOut" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>
+        <button id="btnSignOut" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>
       </div>
     </div>
     <div id="authBox" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2">
@@ -205,17 +205,9 @@ SUPABASE_ANON_KEY=（你的匿名Key）</code>
       <a class="hover:text-black" href="#">使用条款（示例）</a>
     </div>
   </div>
-</footer> class="border-t border-slate-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <p>© <span id="year"></span> 城际同行</p>
-      <div class="flex items-center gap-4">
-        <a class="hover:text-black" href="#">隐私政策（示例）</a>
-        <a class="hover:text-black" href="#">使用条款（示例）</a>
-      </div>
-    </div>
-  </footer>
+</footer>
 
-  <template id="tplCard">
+<template id="tplCard">
   <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
     <div class="text-sm flex items-center justify-between gap-3">
       <div>
@@ -240,8 +232,8 @@ SUPABASE_ANON_KEY=（你的匿名Key）</code>
   }catch(e){}
 })();
 
-const SUPABASE_URL = window.SUPABASE_URL || 'https://ddycdlhhgezffmybssvw.supabase.co'; // ← 替换
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo'; // ← 替换
+const SUPABASE_URL = window.SUPABASE_URL || 'https://ddycdlhhgezffmybssvw.supabase.co';
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 年份与环境预览
@@ -274,15 +266,38 @@ const ui = {
 let currentUser = null;
 let currentProfile = null; // { id, role, full_name, phone }
 
-function requireLogin(){ if(currentUser){ alert('请先登录 / 注册'); return false;} return true; }
+function requireLogin(){ 
+  if(!currentUser){ 
+    alert('请先登录 / 注册'); 
+    return false;
+  } 
+  return true; 
+}
 
 // 登录：Magic Link
 ui.btnMagic.addEventListener('click', async ()=>{
   const email = ui.authEmail.value.trim();
   if(!email) return alert('请输入邮箱');
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href }});
-  if(error) return alert('发送失败：'+error.message);
-  alert('已发送登录链接到邮箱，请查收并点击登录。');
+  
+  try {
+    ui.btnMagic.disabled = true;
+    ui.btnMagic.textContent = '发送中...';
+    
+    const { error } = await sb.auth.signInWithOtp({ 
+      email, 
+      options: { 
+        emailRedirectTo: location.href 
+      }
+    });
+    
+    if(error) throw error;
+    alert('已发送登录链接到邮箱，请查收并点击登录。');
+  } catch(error) {
+    alert('发送失败：' + error.message);
+  } finally {
+    ui.btnMagic.disabled = false;
+    ui.btnMagic.textContent = '发送登录链接';
+  }
 });
 
 ui.btnSignOut.addEventListener('click', async ()=>{
@@ -296,18 +311,26 @@ sb.auth.onAuthStateChange(async (_event, session) => {
   ui.btnSignOut.classList.toggle('hidden', !authed);
   ui.btnEditProfile.classList.toggle('hidden', !authed);
   ui.authBox.classList.toggle('hidden', authed);
-  if(currentUser){ await loadProfile(); loadMyNeeds(); loadMySlots(); }
-});
-  ui.authBox.classList.toggle('hidden', !!currentUser);
-  if(currentUser){ loadMyNeeds(); loadMySlots(); }
+  if(currentUser){ 
+    await loadProfile(); 
+    loadMyNeeds(); 
+    loadMySlots(); 
+  } else {
+    currentProfile = null;
+    ui.roleBadge.classList.add('hidden');
+    ui.myNeeds.innerHTML = '';
+    ui.mySlots.innerHTML = '';
+  }
 });
 
 // ======= 乘客需求 CRUD =======
 async function loadMyNeeds(){
+  if(!currentUser) return;
   const { data, error } = await sb.from('passenger_needs').select('*').order('created_at', { ascending:false });
   if(error) return console.error(error);
   renderList(ui.myNeeds, data, true, async (id)=>{
-    await sb.from('passenger_needs').delete().eq('id', id); loadMyNeeds();
+    await sb.from('passenger_needs').delete().eq('id', id); 
+    loadMyNeeds();
   });
 }
 
@@ -343,10 +366,12 @@ ui.btnSearchSlots.addEventListener('click', async ()=>{
 
 // ======= 司机空闲班次 CRUD =======
 async function loadMySlots(){
+  if(!currentUser) return;
   const { data, error } = await sb.from('driver_slots').select('*').order('date').order('time');
   if(error) return console.error(error);
   renderList(ui.mySlots, data, true, async (id)=>{
-    await sb.from('driver_slots').delete().eq('id', id); loadMySlots();
+    await sb.from('driver_slots').delete().eq('id', id); 
+    loadMySlots();
   });
 }
 
@@ -370,7 +395,10 @@ ui.btnAddSlot.addEventListener('click', async ()=>{
 // ======= 通用渲染 =======
 function renderList(container, rows, mine=false, onDel){
   container.innerHTML='';
-  if(!rows || rows.length===0){ container.innerHTML='<div class="text-sm text-slate-600">暂无数据</div>'; return; }
+  if(!rows || rows.length===0){ 
+    container.innerHTML='<div class="text-sm text-slate-600">暂无数据</div>'; 
+    return; 
+  }
   rows.forEach(r=>{
     const node = ui.tplCard.content.firstElementChild.cloneNode(true);
     node.querySelector('[data-from]').textContent = r.from_city;
@@ -390,19 +418,29 @@ function renderList(container, rows, mine=false, onDel){
 
 // 资料加载与保存
 async function loadProfile(){
+  if(!currentUser) return;
   const { data, error } = await sb.from('profiles').select('*').maybeSingle();
-  if(error && error.code!=='PGRST116'){ console.error(error); return; } // PGRST116 = no rows
+  if(error && error.code!=='PGRST116'){ 
+    console.error(error); 
+    return; 
+  }
   currentProfile = data || null;
+  
   // 展示徽章
-  const role = currentProfile?.role || 'both';
-  ui.roleBadge.textContent = `角色：${role}`;
-  ui.roleBadge.classList.toggle('hidden', !currentUser);
+  if(currentProfile) {
+    const role = currentProfile.role || 'both';
+    ui.roleBadge.textContent = `角色：${role}`;
+    ui.roleBadge.classList.remove('hidden');
+  }
+  
   // 若无资料，弹窗引导
-  if(!currentProfile){ ui.roleDialog.showModal(); }
+  if(!currentProfile){ 
+    ui.roleDialog.showModal(); 
+  }
+  
   // 预填
   ui.prof_name.value = currentProfile?.full_name || '';
   ui.prof_phone.value = currentProfile?.phone || '';
-  // 根据角色调整首屏（可选：滚动到对应区域）
 }
 
 ui.btnEditProfile.addEventListener('click', ()=> ui.roleDialog.showModal());
@@ -410,12 +448,23 @@ ui.btnEditProfile.addEventListener('click', ()=> ui.roleDialog.showModal());
 ui.btnSaveProfile.addEventListener('click', async (e)=>{
   e.preventDefault();
   if(!requireLogin()) return;
+  
   const role = (document.querySelector('input[name="role"]:checked')||{}).value || 'both';
-  const row = { role, full_name: ui.prof_name.value.trim()||null, phone: ui.prof_phone.value.trim()||null };
+  const row = { 
+    role, 
+    full_name: ui.prof_name.value.trim()||null, 
+    phone: ui.prof_phone.value.trim()||null 
+  };
+  
   const { data, error } = await sb.from('profiles').upsert(row).select().single();
-  if(error){ alert('保存失败：'+error.message); return; }
+  if(error){ 
+    alert('保存失败：'+error.message); 
+    return; 
+  }
+  
   currentProfile = data;
   ui.roleBadge.textContent = `角色：${data.role}`;
+  ui.roleBadge.classList.remove('hidden');
   ui.roleDialog.close();
 });
 
@@ -428,7 +477,11 @@ ui.btnSaveProfile.addEventListener('click', async (e)=>{
   ui.btnSignOut.classList.toggle('hidden', !authed);
   ui.btnEditProfile.classList.toggle('hidden', !authed);
   ui.authBox.classList.toggle('hidden', authed);
-  if(currentUser){ await loadProfile(); loadMyNeeds(); loadMySlots(); }
+  if(currentUser){ 
+    await loadProfile(); 
+    loadMyNeeds(); 
+    loadMySlots(); 
+  }
 })();
 </script>
 </body>
