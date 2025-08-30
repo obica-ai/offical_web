@@ -359,7 +359,7 @@
         }
 
 // 乘客发布需求：先保存/创建个人资料 ➜ 再写 passenger_requests
-                async function addPassengerRequest() {
+        async function addPassengerRequest() {
                   if (!currentUser) { showMessage('请先登录', 'error'); return; }
                 
                   // 1) 先 upsert 个人资料（取资料表单的值；没有表单也没关系，会传 null）
@@ -427,8 +427,8 @@
                   }
                 }
 
-        // 司机发布时间表：先保存/创建个人资料 ➜ 再写 driver_schedules
-                async function addDriverSchedule() {
+        
+        async function addDriverSchedule() {
                   if (!currentUser) { showMessage('请先登录', 'error'); return; }
                 
                   // 1) 先 upsert 个人资料
