@@ -742,13 +742,6 @@
                 messageDiv.remove();
             }, 3000);
         }
-        function showMessage(msg, type='info'){ console[type==='error'?'error':'log'](msg); alert(msg); }
-        function clearAuthForm(){ document.getElementById('email-input')?.value=''; document.getElementById('password-input')?.value=''; }
-        async function loadUserData(){ try{ await Promise.all([loadUserProfile(), loadPassengerRequests(), loadDriverSchedules()]); }catch(e){} }
-        function clearPassengerForm(){ ['passenger-from','passenger-to','passenger-date','passenger-time','passenger-seats','passenger-note'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
-        function clearDriverForm(){ ['driver-from','driver-to','driver-date','driver-time','driver-seats','driver-price','driver-note'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
-        async function loadPassengerRequests(){ /* TODO: 从 passenger_requests 读并渲染 */ }
-        async function loadDriverSchedules(){ /* TODO: 从 driver_schedules 读并渲染 */ }
         
 
     </script>
