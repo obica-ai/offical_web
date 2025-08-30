@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>你的品牌 - 轻量着陆页</title>
+  <meta name="description" content="一个现代、响应式的一页式网站模板，适合个人项目、小型企业或产品发布。" />
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 辅助动画 */
+    .fade-in { animation: fadeIn .8s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
+  </style>
+</head>
+<body class="antialiased text-slate-800">
+  <!-- 顶部导航 -->
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <a href="#hero" class="inline-flex items-center gap-2 font-semibold">
+          <span class="inline-block h-8 w-8 rounded-2xl bg-black"></span>
+          <span>你的品牌</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-6 text-sm">
+          <a href="#features" class="hover:text-black">功能</a>
+          <a href="#showcase" class="hover:text-black">展示</a>
+          <a href="#pricing" class="hover:text-black">价格</a>
+          <a href="#contact" class="hover:text-black">联系</a>
+        </nav>
+        <div class="md:hidden">
+          <button id="menuBtn" aria-label="打开菜单" class="p-2 rounded-lg border border-slate-300">☰</button>
+        </div>
+      </div>
+    </div>
+    <!-- 移动端菜单 -->
+    <div id="mobileMenu" class="hidden md:hidden border-t border-slate-200 bg-white">
+      <div class="mx-auto max-w-7xl px-4 py-3 flex flex-col gap-3 text-sm">
+        <a href="#features" class="hover:text-black">功能</a>
+        <a href="#showcase" class="hover:text-black">展示</a>
+        <a href="#pricing" class="hover:text-black">价格</a>
+        <a href="#contact" class="hover:text-black">联系</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="hero" class="relative overflow-hidden">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+      <div class="grid lg:grid-cols-2 gap-10 items-center">
+        <div class="fade-in">
+          <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">用一个页面，
+            <span class="bg-gradient-to-r from-black to-slate-600 bg-clip-text text-transparent">发布你的想法</span>
+          </h1>
+          <p class="mt-5 text-slate-600 leading-7">这是一份开箱即用的响应式模板：快速度上线、易于维护、可按需扩展（表单、博客、登陆等）。</p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="#pricing" class="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white bg-black hover:opacity-90">开始使用</a>
+            <a href="#features" class="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold border border-slate-300">了解功能</a>
+          </div>
+          <ul class="mt-6 text-sm text-slate-600 list-disc list-inside">
+            <li>纯前端，无需服务器</li>
+            <li>Tailwind CSS 样式，易改配色与间距</li>
+            <li>良好语义化：SEO 友好</li>
+          </ul>
+        </div>
+        <div class="fade-in lg:justify-self-end">
+          <div class="relative rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1400&auto=format&fit=crop" alt="产品/网站示意图" class="w-full h-[320px] object-cover" />
+          </div>
+          <p class="mt-3 text-xs text-slate-500 text-center">示意图来自 Unsplash（可替换为你的产品截图）</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 功能 -->
+  <section id="features" class="bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+      <div class="max-w-2xl">
+        <h2 class="text-3xl font-bold">为启动而生的核心功能</h2>
+        <p class="mt-3 text-slate-600">删改即可发布；后续可加博客、常见问题、隐私政策等页面。</p>
+      </div>
+      <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- 单个功能卡片 -->
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">极速上线</h3>
+          <p class="mt-2 text-sm text-slate-600">托管到 GitHub Pages / Vercel / Netlify，只需几分钟。</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">响应式布局</h3>
+          <p class="mt-2 text-sm text-slate-600">移动端优先设计，兼容主流浏览器与屏幕尺寸。</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">可扩展组件</h3>
+          <p class="mt-2 text-sm text-slate-600">按钮、卡片、价格表、联系表单、页脚等常用模块齐全。</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">清晰结构</h3>
+          <p class="mt-2 text-sm text-slate-600">符合语义与可访问性（a11y），更易读、更易维护。</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">零后端依赖</h3>
+          <p class="mt-2 text-sm text-slate-600">使用表单转发或简单的 mailto 链接即可收集意向。</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">易于品牌化</h3>
+          <p class="mt-2 text-sm text-slate-600">替换 Logo、主色与插图，立刻拥有统一风格。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 展示/截图区 -->
+  <section id="showcase">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+      <div class="max-w-2xl">
+        <h2 class="text-3xl font-bold">用成果说话</h2>
+        <p class="mt-3 text-slate-600">放上 3–6 张代表性截图、客户评价或数据里程碑。</p>
+      </div>
+      <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <img class="rounded-2xl border border-slate-200" src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1400&auto=format&fit=crop" alt="示例1" />
+        <img class="rounded-2xl border border-slate-200" src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1400&auto=format&fit=crop" alt="示例2" />
+        <img class="rounded-2xl border border-slate-200" src="https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=1400&auto=format&fit=crop" alt="示例3" />
+      </div>
+    </div>
+  </section>
+
+  <!-- 价格 -->
+  <section id="pricing" class="bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+      <div class="text-center max-w-2xl mx-auto">
+        <h2 class="text-3xl font-bold">简单明了的价格</h2>
+        <p class="mt-3 text-slate-600">按需定制：也可移除价格区，仅保留联系表单。</p>
+      </div>
+      <div class="mt-10 grid md:grid-cols-3 gap-6">
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">入门</h3>
+          <p class="mt-2 text-3xl font-extrabold">$0</p>
+          <p class="text-sm text-slate-600">自助部署</p>
+          <ul class="mt-4 text-sm text-slate-600 space-y-2">
+            <li>模板全部模块</li>
+            <li>开源字体与图标</li>
+            <li>社区支持</li>
+          </ul>
+          <a href="#contact" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold border border-slate-300">试用</a>
+        </div>
+        <div class="rounded-2xl bg-white border-2 border-black p-6 shadow-sm">
+          <h3 class="font-semibold">专业</h3>
+          <p class="mt-2 text-3xl font-extrabold">$99</p>
+          <p class="text-sm text-slate-600">含部署指导</p>
+          <ul class="mt-4 text-sm text-slate-600 space-y-2">
+            <li>定制配色/Logo</li>
+            <li>基础 SEO/分析接入</li>
+            <li>邮件/表单配置</li>
+          </ul>
+          <a href="#contact" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-black">开始</a>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">企业</h3>
+          <p class="mt-2 text-3xl font-extrabold">定制</p>
+          <p class="text-sm text-slate-600">按需求评估</p>
+          <ul class="mt-4 text-sm text-slate-600 space-y-2">
+            <li>品牌设计/文案</li>
+            <li>CMS/多语言/博客</li>
+            <li>后端/API/登录</li>
+          </ul>
+          <a href="#contact" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold border border-slate-300">联系我</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 联系 -->
+  <section id="contact">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+      <div class="grid lg:grid-cols-2 gap-10 items-start">
+        <div>
+          <h2 class="text-3xl font-bold">联系我们</h2>
+          <p class="mt-3 text-slate-600">你可以直接用下方表单（mailto 方案，点击后会在本地邮件客户端中创建草稿），或者替换为你的第三方表单服务（如 Formspree / Basin / Tally）。</p>
+          <ul class="mt-6 text-sm text-slate-600 list-disc list-inside">
+            <li>邮箱：contact@example.com</li>
+            <li>地址：Online-Only</li>
+          </ul>
+        </div>
+        <form class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <label class="block text-sm font-medium">你的名字</label>
+          <input required type="text" id="name" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black" placeholder="张三" />
+
+          <label class="block text-sm font-medium mt-4">邮箱</label>
+          <input required type="email" id="email" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black" placeholder="you@example.com" />
+
+          <label class="block text-sm font-medium mt-4">留言</label>
+          <textarea id="message" rows="4" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black" placeholder="我想了解…"></textarea>
+
+          <button id="sendBtn" type="submit" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-black">通过邮箱发送</button>
+          <p class="mt-3 text-xs text-slate-500">* 点击后将打开你的默认邮件客户端；若未配置本地邮箱，可换用第三方表单服务。</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="border-t border-slate-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© <span id="year"></span> 你的品牌. 保留所有权利。</p>
+      <div class="flex items-center gap-4">
+        <a class="hover:text-black" href="#">隐私政策</a>
+        <a class="hover:text-black" href="#">使用条款</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 年份
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // 移动端菜单
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    menuBtn?.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // 简单 mailto 表单
+    document.getElementById('sendBtn')?.addEventListener('click', function (e) {
+      e.preventDefault();
+      const name = encodeURIComponent(document.getElementById('name').value.trim());
+      const email = encodeURIComponent(document.getElementById('email').value.trim());
+      const message = encodeURIComponent(document.getElementById('message').value.trim());
+      const subject = `网站联系 - ${name}`;
+      const body = `来自：${name}%0A邮箱：${email}%0A%0A留言：%0A${message}`;
+      window.location.href = `mailto:contact@example.com?subject=${subject}&body=${body}`;
+    });
+  </script>
+</body>
+</html>
