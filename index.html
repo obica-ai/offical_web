@@ -674,18 +674,31 @@
       }catch(e){ toast('注册失败：'+(e.message||'Database error'),'error'); }
       finally{ btn.disabled=false; btn.textContent='注册'; }
     }
+
+    
     async function magicLink(){
       const email = document.getElementById('authEmail').value.trim();
       if(!email){ toast('请输入邮箱','error'); return; }
       const btn = document.getElementById('btnMagic'); btn.disabled=true; btn.textContent='发送中…';
+    
       try{
-        const redirect = location.href;
-        const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirect } });
-        if(error) throw error;
+        // 建议顺手保存，verified.html 可用于预填/重发
+        localStorage.setItem('lastEmail', email);
+    
+        await sb.auth.signInWithOtp({
+          email,
+          // ✅ 这里指定回调页（你部署在 /travel_web/）
+          options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+        });
+    
         toast('已发送登录链接，请查收邮箱','success');
-      }catch(e){ toast('发送失败：'+(e.message||'配置错误（检查 Redirect URLs）'),'error'); }
-      finally{ btn.disabled=false; btn.textContent='发登录链接'; }
-    }
+      }catch(e){
+        toast('发送失败：'+(e.message||'配置错误'),'error');
+      }finally{
+        btn.disabled=false; btn.textContent='发登录链接';
+      }
+}
+
     async function signOut(){
       await sb.auth.signOut(); toast('已退出','success');
     }
@@ -1024,19 +1037,25 @@ async function register(){
   const pass  = document.getElementById('authPass').value.trim();
   if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
   const btn = document.getElementById('btnRegister'); btn.disabled=true; btn.textContent='注册中…';
+
   try{
-    const redirect = `${location.origin}/verified.html`;   // ✅ 指向回调页
     const { data, error } = await sb.auth.signUp({
       email,
       password: pass,
-      options: { emailRedirectTo: redirect }
+      // ✅ 邮件确认后跳到同一个 verified.html
+      options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
     });
     if(error) throw error;
+
     if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
     else toast('注册成功！','success');
-  }catch(e){ toast('注册失败：'+(e.message||'Database error'),'error'); }
-  finally{ btn.disabled=false; btn.textContent='注册'; }
+  }catch(e){
+    toast('注册失败：'+(e.message||'Database error'),'error');
+  }finally{
+    btn.disabled=false; btn.textContent='注册';
+  }
 }
+
 
     
   </script>
