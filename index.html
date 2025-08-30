@@ -1001,7 +1001,44 @@ async function fetchProfilesForUserIds(ids){
     }
   }
 }
+// 发送登录链接（magic link）
+async function magicLink(){
+  const email = document.getElementById('authEmail').value.trim();
+  if(!email){ toast('请输入邮箱','error'); return; }
+  const btn = document.getElementById('btnMagic'); btn.disabled=true; btn.textContent='发送中…';
+  try{
+    const redirect = `${location.origin}/verified.html`;   // ✅ 指向回调页
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirect }
+    });
+    if(error) throw error;
+    toast('已发送登录链接，请查收邮箱','success');
+  }catch(e){ toast('发送失败：'+(e.message||'配置错误（检查 Redirect URLs）'),'error'); }
+  finally{ btn.disabled=false; btn.textContent='发登录链接'; }
+}
 
+// 注册（带邮件确认时也建议指定回调）
+async function register(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value.trim();
+  if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
+  const btn = document.getElementById('btnRegister'); btn.disabled=true; btn.textContent='注册中…';
+  try{
+    const redirect = `${location.origin}/verified.html`;   // ✅ 指向回调页
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pass,
+      options: { emailRedirectTo: redirect }
+    });
+    if(error) throw error;
+    if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
+    else toast('注册成功！','success');
+  }catch(e){ toast('注册失败：'+(e.message||'Database error'),'error'); }
+  finally{ btn.disabled=false; btn.textContent='注册'; }
+}
+
+    
   </script>
 </body>
 </html>
