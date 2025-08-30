@@ -110,6 +110,17 @@
 
     <!-- 乘客 -->
     <section id="passenger-section" class="hidden">
+      <!-- 可用司机列表（乘客可见） -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">可用司机</h4>
+            <div class="flex items-center gap-2">
+              <input id="driver-filter" class="px-3 py-2 border rounded-md text-sm" placeholder="按城市 / 州 / 邮编筛选">
+              <button id="btnDriversRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
+            </div>
+          </div>
+          <div id="driver-list" class="space-y-3"></div>
+        </div>
       <div class="bg-white rounded-xl border shadow-sm p-6">
         <h2 class="text-lg font-semibold mb-4">乘客 - 发布行程需求</h2>
 
@@ -193,6 +204,17 @@
 
     <!-- 司机 -->
     <section id="driver-section" class="hidden">
+      <!-- 乘客需求列表（司机可见） -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">乘客需求</h4>
+            <div class="flex items-center gap-2">
+              <input id="passenger-filter" class="px-3 py-2 border rounded-md text-sm" placeholder="按城市 / 州 / 邮编筛选">
+              <button id="btnPassengersRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
+            </div>
+          </div>
+          <div id="passenger-list" class="space-y-3"></div>
+        </div>
       <div class="bg-white rounded-xl border shadow-sm p-6">
         <h2 class="text-lg font-semibold mb-4">司机 - 发布可用时间表</h2>
 
@@ -655,8 +677,20 @@
 
     // —— 初始化与事件绑定 ——
     document.getElementById('nav-board').addEventListener('click', ()=>{ showSection('board'); loadBoard(); });
-    document.getElementById('nav-passenger').addEventListener('click', ()=>showSection('passenger'));
-    document.getElementById('nav-driver').addEventListener('click', ()=>showSection('driver'));
+    document.getElementById('nav-passenger').addEventListener('click', ()=>{
+      showSection('passenger');
+      loadDriversList();
+    });
+    document.getElementById('nav-driver').addEventListener('click', ()=>{
+      showSection('driver');
+      loadPassengersList();
+    });
+    document.getElementById('driver-filter').addEventListener('input', e => renderDriversList(e.target.value.trim()));
+    document.getElementById('btnDriversRefresh').addEventListener('click', loadDriversList);
+    
+    document.getElementById('passenger-filter').addEventListener('input', e => renderPassengersList(e.target.value.trim()));
+    document.getElementById('btnPassengersRefresh').addEventListener('click', loadPassengersList);
+
     document.getElementById('btnLogin').addEventListener('click', login);
     document.getElementById('btnRegister').addEventListener('click', register);
     document.getElementById('btnMagic').addEventListener('click', magicLink);
@@ -708,6 +742,132 @@
       // Realtime（如果你开启了并允许 anon 订阅，可以保留；否则保留也不会影响读取）
       try { setupRealtime(); } catch (_) {}
     }
+
+    // —— 分页缓存 —— 
+const listCache = { drivers: [], passengers: [] };
+
+// 工具：格式化地址、卡片、徽标（复用你已有的函数即可，如已存在可忽略）
+function fmtAddr(o){
+  const line1 = [o.city, o.state, o.postal].filter(Boolean).join(', ');
+  const line2 = [o.street1, o.street2].filter(Boolean).join(' ');
+  return { line1, line2 };
+}
+function card(el){ return `<div class="border rounded-lg p-3 bg-white shadow-sm">${el}</div>`; }
+function badge(t){ return `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 border">${t}</span>`; }
+
+// 渲染：可用司机（乘客页用）
+function renderDriversList(filterText=''){
+  const wrap = document.getElementById('driver-list');
+  if(!wrap) return;
+  const t = (filterText||'').toLowerCase();
+  const rows = listCache.drivers.filter(r=>{
+    if(!t) return true;
+    const s = [
+      r.origin_city || r.from_city, r.origin_state, r.origin_postal_code,
+      r.destination_city || r.to_city, r.destination_state, r.destination_postal_code
+    ].filter(Boolean).join(' ').toLowerCase();
+    return s.includes(t);
+  });
+  wrap.innerHTML = rows.map(r=>{
+    const o = fmtAddr({
+      city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '',
+      street1: r.origin_street1 || '', street2: r.origin_street2 || ''
+    });
+    const d = fmtAddr({
+      city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '',
+      street1: r.destination_street1 || '', street2: r.destination_street2 || ''
+    });
+    const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+    const price = (r.price_per_person && Number(r.price_per_person)>0) ? `${r.price_per_person}` : '—';
+    return card(`
+      <div>
+        <div class="flex items-center gap-2 mb-1">${badge('司机')} ${badge('可载 '+r.available_seats+' 人')}</div>
+        <div class="text-sm font-medium">出发：${o.line1}</div>
+        <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+        <div class="text-sm mt-1">到达：${d.line1}</div>
+        <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+        <div class="text-sm mt-1">时间：${dt}</div>
+        <div class="text-sm text-gray-600">价格/人：${price}</div>
+        ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+      </div>
+    `);
+  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+}
+
+// 渲染：乘客需求（司机页用）
+function renderPassengersList(filterText=''){
+  const wrap = document.getElementById('passenger-list');
+  if(!wrap) return;
+  const t = (filterText||'').toLowerCase();
+  const rows = listCache.passengers.filter(r=>{
+    if(!t) return true;
+    const s = [
+      r.origin_city || r.from_city, r.origin_state, r.origin_postal_code,
+      r.destination_city || r.to_city, r.destination_state, r.destination_postal_code
+    ].filter(Boolean).join(' ').toLowerCase();
+    return s.includes(t);
+  });
+  wrap.innerHTML = rows.map(r=>{
+    const o = fmtAddr({
+      city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '',
+      street1: r.origin_street1 || '', street2: r.origin_street2 || ''
+    });
+    const d = fmtAddr({
+      city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '',
+      street1: r.destination_street1 || '', street2: r.destination_street2 || ''
+    });
+    const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+    return card(`
+      <div>
+        <div class="flex items-center gap-2 mb-1">${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')}</div>
+        <div class="text-sm font-medium">出发：${o.line1}</div>
+        <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+        <div class="text-sm mt-1">到达：${d.line1}</div>
+        <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+        <div class="text-sm mt-1">时间：${dt}</div>
+        ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+      </div>
+    `);
+  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+}
+
+// 载入：司机（给乘客页）
+async function loadDriversList(){
+  const now = Date.now();
+  const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
+  const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+
+  const { data, error } = await sb.from('driver_schedules')
+    .select('*')
+    .gte('date', start).lte('date', end)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true })
+    .limit(50);
+  if (error) { console.error(error); toast('加载司机时间表失败：'+error.message,'error'); return; }
+
+  listCache.drivers = data || [];
+  renderDriversList(document.getElementById('driver-filter')?.value?.trim());
+}
+
+// 载入：乘客（给司机页）
+async function loadPassengersList(){
+  const now = Date.now();
+  const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
+  const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+
+  const { data, error } = await sb.from('passenger_requests')
+    .select('*')
+    .gte('date', start).lte('date', end)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true })
+    .limit(50);
+  if (error) { console.error(error); toast('加载乘客需求失败：'+error.message,'error'); return; }
+
+  listCache.passengers = data || [];
+  renderPassengersList(document.getElementById('passenger-filter')?.value?.trim());
+}
+
+    
 
   </script>
 </body>
