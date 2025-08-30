@@ -20,6 +20,7 @@
         <h1 class="text-lg font-semibold">城际同行</h1>
       </div>
       <nav class="flex items-center gap-2 text-sm">
+        <button id="nav-board" class="px-3 py-1.5 rounded-md hover:bg-gray-100">公告栏</button>
         <button id="nav-passenger" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</button>
         <button id="nav-driver" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</button>
       </nav>
@@ -59,6 +60,34 @@
           <button id="btnMagic" class="px-4 py-2 rounded-md border">发登录链接</button>
         </div>
       </div>
+    </section>
+
+    <!-- 公告栏（新增） -->
+    <section id="board-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">公告栏</h3>
+        <div class="flex items-center gap-2">
+          <input id="board-filter" class="px-3 py-2 border rounded-md text-sm" placeholder="按城市 / 州 / 邮编筛选（出发或目的地）">
+          <button id="btnBoardRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">司机可用（最近 20 条）</h4>
+            <span id="driver-count" class="text-xs text-gray-500">0 条</span>
+          </div>
+          <div id="driver-board" class="space-y-3"></div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">乘客需求（最近 20 条）</h4>
+            <span id="passenger-count" class="text-xs text-gray-500">0 条</span>
+          </div>
+          <div id="passenger-board" class="space-y-3"></div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mt-4">提示：已开启 Realtime 时，公告栏会自动更新；否则可点“刷新”。</p>
     </section>
 
     <!-- 个人资料 -->
@@ -284,7 +313,7 @@
       setTimeout(()=>t.classList.add('hidden'), 3000);
     }
     function showSection(name){
-      ['profile','passenger','driver'].forEach(s=>{
+      ['board','profile','passenger','driver'].forEach(s=>{
         const el=document.getElementById(s+'-section');
         if(el) el.classList.add('hidden');
       });
@@ -346,6 +375,107 @@
       }
     }
 
+    // —— 公告栏数据 —— 
+    const boardCache = { drivers: [], passengers: [] };
+
+    function fmtAddr(o){
+      const line1 = [o.city, o.state, o.postal].filter(Boolean).join(', ');
+      const line2 = [o.street1, o.street2].filter(Boolean).join(' ');
+      return { line1, line2 };
+    }
+    function card(el){
+      return `<div class="border rounded-lg p-3 bg-white shadow-sm">${el}</div>`;
+    }
+    function badge(t){ return `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 border">${t}</span>`; }
+
+    function renderBoard(filterText=''){
+      const dWrap = document.getElementById('driver-board');
+      const pWrap = document.getElementById('passenger-board');
+      const dCount = document.getElementById('driver-count');
+      const pCount = document.getElementById('passenger-count');
+      const f = (s)=> s.toLowerCase();
+
+      const match = (obj)=>{
+        if(!filterText) return true;
+        const t = f(filterText);
+        const fields = [
+          obj.origin_city, obj.origin_state, obj.origin_postal_code,
+          obj.destination_city, obj.destination_state, obj.destination_postal_code
+        ].filter(Boolean).join(' ').toLowerCase();
+        return fields.includes(t);
+      };
+
+      const drivers = boardCache.drivers.filter(match);
+      const passengers = boardCache.passengers.filter(match);
+
+      dCount.textContent = `${drivers.length} 条`;
+      pCount.textContent = `${passengers.length} 条`;
+
+      dWrap.innerHTML = drivers.map(r=>{
+        const o = fmtAddr({city:r.origin_city, state:r.origin_state, postal:r.origin_postal_code, street1:r.origin_street1, street2:r.origin_street2});
+        const d = fmtAddr({city:r.destination_city, state:r.destination_state, postal:r.destination_postal_code, street1:r.destination_street1, street2:r.destination_street2});
+        const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+        const price = (r.price_per_person && Number(r.price_per_person)>0) ? `${r.price_per_person}` : '—';
+        return card(`
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 mb-1">${badge('司机')} ${badge('可载 '+r.available_seats+' 人')}</div>
+              <div class="text-sm font-medium">出发：${o.line1}</div>
+              <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+              <div class="text-sm mt-1">到达：${d.line1}</div>
+              <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+              <div class="text-sm mt-1">时间：${dt}</div>
+              <div class="text-sm text-gray-600">价格/人：${price}</div>
+              ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+            </div>
+          </div>
+        `);
+      }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+
+      pWrap.innerHTML = passengers.map(r=>{
+        const o = fmtAddr({city:r.origin_city, state:r.origin_state, postal:r.origin_postal_code, street1:r.origin_street1, street2:r.origin_street2});
+        const d = fmtAddr({city:r.destination_city, state:r.destination_state, postal:r.destination_postal_code, street1:r.destination_street1, street2:r.destination_street2});
+        const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+        return card(`
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 mb-1">${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')}</div>
+              <div class="text-sm font-medium">出发：${o.line1}</div>
+              <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+              <div class="text-sm mt-1">到达：${d.line1}</div>
+              <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+              <div class="text-sm mt-1">时间：${dt}</div>
+              ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+            </div>
+          </div>
+        `);
+      }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+    }
+
+    async function loadBoard(){
+      const today = new Date().toISOString().slice(0,10);
+      // drivers
+      const { data: d, error: de } = await sb.from('driver_schedules')
+        .select('*')
+        .gte('date', today)
+        .order('date', { ascending: true })
+        .order('time', { ascending: true })
+        .limit(20);
+      if (de) { console.error('load drivers error', de); toast('加载司机时间表失败：'+de.message,'error'); }
+      // passengers
+      const { data: p, error: pe } = await sb.from('passenger_requests')
+        .select('*')
+        .gte('date', today)
+        .order('date', { ascending: true })
+        .order('time', { ascending: true })
+        .limit(20);
+      if (pe) { console.error('load passenger error', pe); toast('加载乘客需求失败：'+pe.message,'error'); }
+
+      boardCache.drivers = d || [];
+      boardCache.passengers = p || [];
+      renderBoard(document.getElementById('board-filter').value.trim());
+    }
+
     // —— 业务提交：乘客 ——
     async function addPassengerRequest(){
       const { data: sess } = await sb.auth.getSession();
@@ -387,6 +517,8 @@
         });
         if(error) throw error;
         toast('需求发布成功','success');
+        // 刷新公告栏
+        loadBoard();
       }catch(e){ toast('发布失败：'+e.message,'error'); }
       finally{ btn.disabled=false; btn.textContent='发布需求'; }
     }
@@ -431,6 +563,7 @@
         });
         if(error) throw error;
         toast('时间表发布成功','success');
+        loadBoard();
       }catch(e){ toast('发布失败：'+e.message,'error'); }
       finally{ btn.disabled=false; btn.textContent='发布时间表'; }
     }
@@ -486,6 +619,7 @@
     }
 
     // —— 初始化与事件绑定 ——
+    document.getElementById('nav-board').addEventListener('click', ()=>{ showSection('board'); loadBoard(); });
     document.getElementById('nav-passenger').addEventListener('click', ()=>showSection('passenger'));
     document.getElementById('nav-driver').addEventListener('click', ()=>showSection('driver'));
     document.getElementById('btnLogin').addEventListener('click', login);
@@ -496,6 +630,8 @@
     document.getElementById('btnSaveProfile').addEventListener('click', saveProfileButton);
     document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
     document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
+    document.getElementById('btnBoardRefresh').addEventListener('click', loadBoard);
+    document.getElementById('board-filter').addEventListener('input', (e)=> renderBoard(e.target.value.trim()));
 
     // 会话恢复
     (async ()=>{
@@ -506,14 +642,31 @@
     // 监听会话变更
     sb.auth.onAuthStateChange((_evt, session)=> updateAuthUI(session));
 
+    // Realtime（可选：需在 Supabase 启用 Realtime 复制）
+    let rtSub = null;
+    function setupRealtime(){
+      try{
+        if(rtSub) { sb.removeChannel(rtSub); rtSub=null; }
+        rtSub = sb.channel('board-ch')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'driver_schedules' }, () => loadBoard())
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'driver_schedules' }, () => loadBoard())
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'driver_schedules' }, () => loadBoard())
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'passenger_requests' }, () => loadBoard())
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'passenger_requests' }, () => loadBoard())
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'passenger_requests' }, () => loadBoard())
+          .subscribe((s)=>{ /* console.log('Realtime status', s); */ });
+      }catch(e){ console.warn('Realtime unavailable', e); }
+    }
+
     function updateAuthUI(session){
       const authed = !!session?.user;
       document.getElementById('authStatus').textContent = authed ? `已登录：${session.user.email}` : '未登录';
       document.getElementById('authBox').classList.toggle('hidden', authed);
       document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
       document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
-      // 默认展示乘客页
-      showSection(authed ? 'passenger' : 'profile');
+      // 默认展示公告栏（登录后）
+      showSection(authed ? 'board' : 'profile');
+      if (authed) { loadBoard(); setupRealtime(); }
     }
   </script>
 </body>
