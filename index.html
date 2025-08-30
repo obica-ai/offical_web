@@ -3,234 +3,317 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>你的品牌 - 轻量着陆页</title>
-  <meta name="description" content="一个现代、响应式的一页式网站模板，适合个人项目、小型企业或产品发布。" />
-  <!-- Tailwind CDN -->
+  <title>城际同行平台 · 乘客&司机</title>
+  <meta name="description" content="一个面向两类用户（乘客/司机）的简易原型：司机发布班次、乘客按城市与日期筛选并下单。纯前端可直接部署。" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* 辅助动画 */
-    .fade-in { animation: fadeIn .8s ease both; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
+    .fade-in { animation: fadeIn .5s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+    .chip{ @apply inline-flex items-center rounded-full border px-2 py-0.5 text-xs; }
+    input, select, textarea{ @apply rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black; }
+    label{ @apply text-sm font-medium; }
   </style>
 </head>
-<body class="antialiased text-slate-800">
-  <!-- 顶部导航 -->
+<body class="antialiased text-slate-800 bg-slate-50 min-h-screen">
   <header class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-200">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-16 items-center justify-between">
-        <a href="#hero" class="inline-flex items-center gap-2 font-semibold">
+        <div class="inline-flex items-center gap-2 font-semibold">
           <span class="inline-block h-8 w-8 rounded-2xl bg-black"></span>
-          <span>你的品牌</span>
-        </a>
-        <nav class="hidden md:flex items-center gap-6 text-sm">
-          <a href="#features" class="hover:text-black">功能</a>
-          <a href="#showcase" class="hover:text-black">展示</a>
-          <a href="#pricing" class="hover:text-black">价格</a>
-          <a href="#contact" class="hover:text-black">联系</a>
-        </nav>
-        <div class="md:hidden">
-          <button id="menuBtn" aria-label="打开菜单" class="p-2 rounded-lg border border-slate-300">☰</button>
+          <span>城际同行</span>
         </div>
-      </div>
-    </div>
-    <!-- 移动端菜单 -->
-    <div id="mobileMenu" class="hidden md:hidden border-t border-slate-200 bg-white">
-      <div class="mx-auto max-w-7xl px-4 py-3 flex flex-col gap-3 text-sm">
-        <a href="#features" class="hover:text-black">功能</a>
-        <a href="#showcase" class="hover:text-black">展示</a>
-        <a href="#pricing" class="hover:text-black">价格</a>
-        <a href="#contact" class="hover:text-black">联系</a>
+        <nav class="hidden md:flex items-center gap-6 text-sm">
+          <a href="#passenger" class="hover:text-black">乘客</a>
+          <a href="#driver" class="hover:text-black">司机</a>
+          <a href="#how" class="hover:text-black">使用说明</a>
+        </nav>
       </div>
     </div>
   </header>
 
-  <!-- Hero -->
-  <section id="hero" class="relative overflow-hidden">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-      <div class="grid lg:grid-cols-2 gap-10 items-center">
-        <div class="fade-in">
-          <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">用一个页面，
-            <span class="bg-gradient-to-r from-black to-slate-600 bg-clip-text text-transparent">发布你的想法</span>
-          </h1>
-          <p class="mt-5 text-slate-600 leading-7">这是一份开箱即用的响应式模板：快速度上线、易于维护、可按需扩展（表单、博客、登陆等）。</p>
-          <div class="mt-8 flex flex-wrap gap-3">
-            <a href="#pricing" class="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white bg-black hover:opacity-90">开始使用</a>
-            <a href="#features" class="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold border border-slate-300">了解功能</a>
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+    <div class="grid lg:grid-cols-3 gap-8">
+      <!-- 左侧：搜索/发布面板 -->
+      <section class="lg:col-span-2 space-y-8">
+        <!-- 乘客面板 -->
+        <div id="passenger" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="text-xl font-bold">乘客 · 查找与预约</h2>
+            <span class="chip border-slate-300">MVP 原型</span>
           </div>
-          <ul class="mt-6 text-sm text-slate-600 list-disc list-inside">
-            <li>纯前端，无需服务器</li>
-            <li>Tailwind CSS 样式，易改配色与间距</li>
-            <li>良好语义化：SEO 友好</li>
-          </ul>
-        </div>
-        <div class="fade-in lg:justify-self-end">
-          <div class="relative rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1400&auto=format&fit=crop" alt="产品/网站示意图" class="w-full h-[320px] object-cover" />
+          <p class="mt-1 text-sm text-slate-600">按<strong>出发城市</strong>、<strong>到达城市</strong>和<strong>日期</strong>筛选司机班次；支持 seats≥需求 的匹配。</p>
+          <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label>出发城市</label>
+              <input id="p_from" placeholder="例如：上海" />
+            </div>
+            <div>
+              <label>到达城市</label>
+              <input id="p_to" placeholder="例如：杭州" />
+            </div>
+            <div>
+              <label>日期</label>
+              <input id="p_date" type="date" />
+            </div>
+            <div>
+              <label>需要座位数</label>
+              <input id="p_seats" type="number" min="1" value="1" />
+            </div>
+            <div class="sm:col-span-2 lg:col-span-1 flex items-end">
+              <button id="btnSearch" class="w-full rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">搜索班次</button>
+            </div>
           </div>
-          <p class="mt-3 text-xs text-slate-500 text-center">示意图来自 Unsplash（可替换为你的产品截图）</p>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- 功能 -->
-  <section id="features" class="bg-slate-50">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <div class="max-w-2xl">
-        <h2 class="text-3xl font-bold">为启动而生的核心功能</h2>
-        <p class="mt-3 text-slate-600">删改即可发布；后续可加博客、常见问题、隐私政策等页面。</p>
-      </div>
-      <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- 单个功能卡片 -->
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">极速上线</h3>
-          <p class="mt-2 text-sm text-slate-600">托管到 GitHub Pages / Vercel / Netlify，只需几分钟。</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">响应式布局</h3>
-          <p class="mt-2 text-sm text-slate-600">移动端优先设计，兼容主流浏览器与屏幕尺寸。</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">可扩展组件</h3>
-          <p class="mt-2 text-sm text-slate-600">按钮、卡片、价格表、联系表单、页脚等常用模块齐全。</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">清晰结构</h3>
-          <p class="mt-2 text-sm text-slate-600">符合语义与可访问性（a11y），更易读、更易维护。</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">零后端依赖</h3>
-          <p class="mt-2 text-sm text-slate-600">使用表单转发或简单的 mailto 链接即可收集意向。</p>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">易于品牌化</h3>
-          <p class="mt-2 text-sm text-slate-600">替换 Logo、主色与插图，立刻拥有统一风格。</p>
-        </div>
-      </div>
-    </div>
-  </section>
+          <div class="mt-6">
+            <h3 class="font-semibold">可预约班次</h3>
+            <div id="searchResults" class="mt-3 grid gap-3"></div>
+          </div>
 
-  <!-- 展示/截图区 -->
-  <section id="showcase">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <div class="max-w-2xl">
-        <h2 class="text-3xl font-bold">用成果说话</h2>
-        <p class="mt-3 text-slate-600">放上 3–6 张代表性截图、客户评价或数据里程碑。</p>
-      </div>
-      <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <img class="rounded-2xl border border-slate-200" src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1400&auto=format&fit=crop" alt="示例1" />
-        <img class="rounded-2xl border border-slate-200" src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1400&auto=format&fit=crop" alt="示例2" />
-        <img class="rounded-2xl border border-slate-200" src="https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=1400&auto=format&fit=crop" alt="示例3" />
-      </div>
-    </div>
-  </section>
+          <dialog id="bookDialog" class="rounded-2xl p-0 w-[min(580px,90vw)]">
+            <form method="dialog" class="rounded-2xl bg-white border border-slate-200 shadow-lg overflow-hidden">
+              <div class="px-6 py-4 border-b flex items-center justify-between">
+                <h4 class="font-semibold">提交预约请求</h4>
+                <button class="px-2 py-1" value="close">✕</button>
+              </div>
+              <div class="p-6 grid sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2 text-sm text-slate-600" id="bookInfo"></div>
+                <div>
+                  <label>你的姓名</label>
+                  <input id="b_name" required placeholder="张三" />
+                </div>
+                <div>
+                  <label>联系方式（电话/微信/邮箱）</label>
+                  <input id="b_contact" required placeholder="手机号或微信号" />
+                </div>
+                <div class="sm:col-span-2">
+                  <label>备注</label>
+                  <textarea id="b_note" rows="3" placeholder="如携带行李、婴儿座椅等"></textarea>
+                </div>
+              </div>
+              <div class="px-6 py-4 border-t flex items-center justify-end gap-3 bg-slate-50">
+                <button class="rounded-xl border border-slate-300 px-4 py-2 text-sm" value="cancel">取消</button>
+                <button id="btnSubmitBooking" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold" value="default">提交</button>
+              </div>
+            </form>
+          </dialog>
+        </div>
 
-  <!-- 价格 -->
-  <section id="pricing" class="bg-slate-50">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <div class="text-center max-w-2xl mx-auto">
-        <h2 class="text-3xl font-bold">简单明了的价格</h2>
-        <p class="mt-3 text-slate-600">按需定制：也可移除价格区，仅保留联系表单。</p>
-      </div>
-      <div class="mt-10 grid md:grid-cols-3 gap-6">
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">入门</h3>
-          <p class="mt-2 text-3xl font-extrabold">$0</p>
-          <p class="text-sm text-slate-600">自助部署</p>
-          <ul class="mt-4 text-sm text-slate-600 space-y-2">
-            <li>模板全部模块</li>
-            <li>开源字体与图标</li>
-            <li>社区支持</li>
-          </ul>
-          <a href="#contact" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold border border-slate-300">试用</a>
-        </div>
-        <div class="rounded-2xl bg-white border-2 border-black p-6 shadow-sm">
-          <h3 class="font-semibold">专业</h3>
-          <p class="mt-2 text-3xl font-extrabold">$99</p>
-          <p class="text-sm text-slate-600">含部署指导</p>
-          <ul class="mt-4 text-sm text-slate-600 space-y-2">
-            <li>定制配色/Logo</li>
-            <li>基础 SEO/分析接入</li>
-            <li>邮件/表单配置</li>
-          </ul>
-          <a href="#contact" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-black">开始</a>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">企业</h3>
-          <p class="mt-2 text-3xl font-extrabold">定制</p>
-          <p class="text-sm text-slate-600">按需求评估</p>
-          <ul class="mt-4 text-sm text-slate-600 space-y-2">
-            <li>品牌设计/文案</li>
-            <li>CMS/多语言/博客</li>
-            <li>后端/API/登录</li>
-          </ul>
-          <a href="#contact" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold border border-slate-300">联系我</a>
-        </div>
-      </div>
-    </div>
-  </section>
+        <!-- 司机面板 -->
+        <div id="driver" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
+          <h2 class="text-xl font-bold">司机 · 发布班次与查看请求</h2>
+          <p class="mt-1 text-sm text-slate-600">添加/管理你的行程；乘客的预约请求会出现在下方“收到的请求”。</p>
 
-  <!-- 联系 -->
-  <section id="contact">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <div class="grid lg:grid-cols-2 gap-10 items-start">
-        <div>
-          <h2 class="text-3xl font-bold">联系我们</h2>
-          <p class="mt-3 text-slate-600">你可以直接用下方表单（mailto 方案，点击后会在本地邮件客户端中创建草稿），或者替换为你的第三方表单服务（如 Formspree / Basin / Tally）。</p>
-          <ul class="mt-6 text-sm text-slate-600 list-disc list-inside">
-            <li>邮箱：contact@example.com</li>
-            <li>地址：Online-Only</li>
+          <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label>司机姓名</label>
+              <input id="d_name" placeholder="李四" />
+            </div>
+            <div>
+              <label>联系方式（仅对预约乘客可见）</label>
+              <input id="d_contact" placeholder="手机号或微信号" />
+            </div>
+            <div>
+              <label>出发城市</label>
+              <input id="d_from" placeholder="例如：上海" />
+            </div>
+            <div>
+              <label>到达城市</label>
+              <input id="d_to" placeholder="例如：杭州" />
+            </div>
+            <div>
+              <label>日期</label>
+              <input id="d_date" type="date" />
+            </div>
+            <div>
+              <label>出发时间</label>
+              <input id="d_time" type="time" />
+            </div>
+            <div>
+              <label>可用座位</label>
+              <input id="d_seats" type="number" min="1" value="3" />
+            </div>
+            <div>
+              <label>备注</label>
+              <input id="d_note" placeholder="如上门接送/中途站点等" />
+            </div>
+            <div class="sm:col-span-2 lg:col-span-4 flex items-end justify-end">
+              <button id="btnAddSchedule" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">+ 发布班次</button>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <h3 class="font-semibold">我的班次</h3>
+            <div id="driverSchedules" class="mt-3 grid gap-3"></div>
+          </div>
+
+          <div class="mt-6">
+            <h3 class="font-semibold">收到的预约请求</h3>
+            <div id="driverRequests" class="mt-3 grid gap-3"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右侧：说明/状态 -->
+      <aside id="how" class="space-y-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">平台说明（MVP）</h3>
+          <ul class="mt-2 text-sm text-slate-600 list-disc list-inside space-y-1">
+            <li>这是前端原型：数据保存在浏览器 <code>localStorage</code>；刷新不丢失但不共享。</li>
+            <li>乘客按城市/日期/座位筛选；提交预约后，司机会在“收到的预约请求”看到信息。</li>
+            <li>要上线真实服务：建议接入账号系统、后端数据库（如 Supabase/Firebase）、短信/微信通知。</li>
           </ul>
         </div>
-        <form class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <label class="block text-sm font-medium">你的名字</label>
-          <input required type="text" id="name" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black" placeholder="张三" />
-
-          <label class="block text-sm font-medium mt-4">邮箱</label>
-          <input required type="email" id="email" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black" placeholder="you@example.com" />
-
-          <label class="block text-sm font-medium mt-4">留言</label>
-          <textarea id="message" rows="4" class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black" placeholder="我想了解…"></textarea>
-
-          <button id="sendBtn" type="submit" class="mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-black">通过邮箱发送</button>
-          <p class="mt-3 text-xs text-slate-500">* 点击后将打开你的默认邮件客户端；若未配置本地邮箱，可换用第三方表单服务。</p>
-        </form>
-      </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+          <h3 class="font-semibold">下一步可做</h3>
+          <ol class="mt-2 text-sm text-slate-600 list-decimal list-inside space-y-1">
+            <li>城市字段改为选择器并做常用城市预设；增加价格/拼车规则。</li>
+            <li>支持往返与循环日程（每周 X/周末等）。</li>
+            <li>加入账号与司机认证、评价体系、取消/改签流程。</li>
+            <li>加入支付与托管（如 Stripe/微信支付）与风控。</li>
+          </ol>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm text-sm text-slate-600">
+          <p class="mb-2 font-semibold">数据调试</p>
+          <div class="flex gap-2">
+            <button id="btnSeed" class="rounded-xl border border-slate-300 px-3 py-1">生成示例数据</button>
+            <button id="btnClear" class="rounded-xl border border-slate-300 px-3 py-1">清空本地数据</button>
+          </div>
+          <p class="mt-2 text-xs">仅影响本浏览器，不会上传。</p>
+        </div>
+      </aside>
     </div>
-  </section>
+  </main>
 
-  <!-- 页脚 -->
   <footer class="border-t border-slate-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <p>© <span id="year"></span> 你的品牌. 保留所有权利。</p>
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© <span id="year"></span> 城际同行</p>
       <div class="flex items-center gap-4">
-        <a class="hover:text-black" href="#">隐私政策</a>
-        <a class="hover:text-black" href="#">使用条款</a>
+        <a class="hover:text-black" href="#">隐私政策（示例）</a>
+        <a class="hover:text-black" href="#">使用条款（示例）</a>
       </div>
     </div>
   </footer>
 
+  <template id="tplScheduleCard">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-sm">
+          <div class="font-semibold"><span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span></div>
+          <div class="text-slate-600 mt-1">司机：<span data-driver></span> · 座位：<span data-seats></span> · <span data-note></span></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button data-book class="rounded-xl bg-black text-white px-3 py-1.5 text-xs font-semibold">预约</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tplDriverScheduleRow">
+    <div class="rounded-xl border border-slate-200 bg-white p-3">
+      <div class="text-sm flex flex-wrap gap-x-3 gap-y-1 items-center justify-between">
+        <div><span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span> · 座位 <span data-seats></span> · <span data-note></span></div>
+        <div class="flex items-center gap-2">
+          <button data-del class="rounded-lg border border-slate-300 px-2 py-1 text-xs">删除</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tplRequestCard">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="text-sm">
+        <div class="font-semibold">来自 <span data-name></span> 的预约请求</div>
+        <div class="text-slate-600 mt-1">联系方式：<span data-contact></span></div>
+        <div class="text-slate-600">班次：<span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span></div>
+        <div class="text-slate-600">备注：<span data-note></span></div>
+      </div>
+    </div>
+  </template>
+
   <script>
-    // 年份
-    document.getElementById('year').textContent = new Date().getFullYear();
+  // ---- 简易数据层（localStorage） ----
+  const LS_KEYS = { drivers: 'cj_drivers', schedules: 'cj_schedules', requests: 'cj_requests' };
+  const readLS = (k) => JSON.parse(localStorage.getItem(k) || '[]');
+  const writeLS = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-    // 移动端菜单
-    const menuBtn = document.getElementById('menuBtn');
-    const mobileMenu = document.getElementById('mobileMenu');
-    menuBtn?.addEventListener('click', () => {
-      mobileMenu.classList.toggle('hidden');
-    });
+  function uid(){ return Math.random().toString(36).slice(2,10); }
 
-    // 简单 mailto 表单
-    document.getElementById('sendBtn')?.addEventListener('click', function (e) {
-      e.preventDefault();
-      const name = encodeURIComponent(document.getElementById('name').value.trim());
-      const email = encodeURIComponent(document.getElementById('email').value.trim());
-      const message = encodeURIComponent(document.getElementById('message').value.trim());
-      const subject = `网站联系 - ${name}`;
-      const body = `来自：${name}%0A邮箱：${email}%0A%0A留言：%0A${message}`;
-      window.location.href = `mailto:contact@example.com?subject=${subject}&body=${body}`;
-    });
-  </script>
-</body>
-</html>
+  // 年份
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // 元素引用
+  const els = {
+    p_from: document.getElementById('p_from'),
+    p_to: document.getElementById('p_to'),
+    p_date: document.getElementById('p_date'),
+    p_seats: document.getElementById('p_seats'),
+    btnSearch: document.getElementById('btnSearch'),
+    searchResults: document.getElementById('searchResults'),
+
+    d_name: document.getElementById('d_name'),
+    d_contact: document.getElementById('d_contact'),
+    d_from: document.getElementById('d_from'),
+    d_to: document.getElementById('d_to'),
+    d_date: document.getElementById('d_date'),
+    d_time: document.getElementById('d_time'),
+    d_seats: document.getElementById('d_seats'),
+    d_note: document.getElementById('d_note'),
+    btnAddSchedule: document.getElementById('btnAddSchedule'),
+    driverSchedules: document.getElementById('driverSchedules'),
+    driverRequests: document.getElementById('driverRequests'),
+
+    btnSeed: document.getElementById('btnSeed'),
+    btnClear: document.getElementById('btnClear'),
+
+    tplScheduleCard: document.getElementById('tplScheduleCard'),
+    tplDriverScheduleRow: document.getElementById('tplDriverScheduleRow'),
+    tplRequestCard: document.getElementById('tplRequestCard'),
+
+    bookDialog: document.getElementById('bookDialog'),
+    bookInfo: document.getElementById('bookInfo'),
+    b_name: document.getElementById('b_name'),
+    b_contact: document.getElementById('b_contact'),
+    b_note: document.getElementById('b_note'),
+    btnSubmitBooking: document.getElementById('btnSubmitBooking'),
+  };
+
+  // 当前司机临时身份（基于名字+联系信息）
+  function currentDriverId(){
+    const name = els.d_name.value.trim();
+    const contact = els.d_contact.value.trim();
+    if(!name || !contact) return null;
+    const key = `${name}__${contact}`;
+    let drivers = readLS(LS_KEYS.drivers);
+    let found = drivers.find(d => d.key === key);
+    if(!found){
+      found = { id: uid(), key, name, contact };
+      drivers.push(found); writeLS(LS_KEYS.drivers, drivers);
+    }
+    return found.id;
+  }
+
+  // 添加班次
+  els.btnAddSchedule.addEventListener('click', () => {
+    const did = currentDriverId();
+    if(!did){ alert('请先填写“司机姓名”和“联系方式”。'); return; }
+    const from = els.d_from.value.trim();
+    const to = els.d_to.value.trim();
+    const date = els.d_date.value;
+    const time = els.d_time.value;
+    const seats = parseInt(els.d_seats.value||'0',10);
+    const note = els.d_note.value.trim();
+    if(!from || !to || !date || !time || !seats){ alert('请完整填写出发/到达/日期/时间/座位。'); return; }
+    const schedules = readLS(LS_KEYS.schedules);
+    schedules.push({ id: uid(), driverId: did, from, to, date, time, seats, note });
+    writeLS(LS_KEYS.schedules, schedules);
+    renderDriverSchedules();
+    alert('已发布班次');
+  });
+
+  // 渲染司机的班次
+  function renderDriverSchedules(){
+    const did = currentDriverId();
+    const list = readLS(LS_KEYS.schedules).filter(s => s.driverId === did);
+    els.driverSchedules.innerHTML = '';
+    list.forEach(s => {
+      const node = els.t
