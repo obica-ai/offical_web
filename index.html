@@ -316,4 +316,147 @@
     const list = readLS(LS_KEYS.schedules).filter(s => s.driverId === did);
     els.driverSchedules.innerHTML = '';
     list.forEach(s => {
-      const node = els.t
+      const node = els.tplDriverScheduleRow.content.firstElementChild.cloneNode(true);
+      node.querySelector('[data-from]').textContent = s.from;
+      node.querySelector('[data-to]').textContent = s.to;
+      node.querySelector('[data-date]').textContent = s.date;
+      node.querySelector('[data-time]').textContent = s.time;
+      node.querySelector('[data-seats]').textContent = s.seats;
+      node.querySelector('[data-note]').textContent = s.note||'';
+      node.querySelector('[data-del]').addEventListener('click', () => {
+        const schedules = readLS(LS_KEYS.schedules).filter(x => x.id !== s.id);
+        writeLS(LS_KEYS.schedules, schedules);
+        renderDriverSchedules(); renderDriverRequests();
+      });
+      els.driverSchedules.appendChild(node);
+    });
+  }
+
+  // 搜索班次
+  els.btnSearch.addEventListener('click', () => {
+    const from = els.p_from.value.trim();
+    const to = els.p_to.value.trim();
+    const date = els.p_date.value;
+    const need = parseInt(els.p_seats.value||'1',10);
+    const schedules = readLS(LS_KEYS.schedules).filter(s =>
+      (!from || s.from.includes(from)) &&
+      (!to || s.to.includes(to)) &&
+      (!date || s.date === date) &&
+      (s.seats >= need)
+    );
+    renderSearch(schedules);
+  });
+
+  function driverInfo(driverId){
+    return readLS(LS_KEYS.drivers).find(d => d.id === driverId) || {name:'未命名司机', contact:''};
+  }
+
+  // 渲染搜索结果
+  function renderSearch(list){
+    els.searchResults.innerHTML = '';
+    if(list.length === 0){
+      els.searchResults.innerHTML = '<div class="text-sm text-slate-600">未找到匹配的班次。</div>';
+      return;
+    }
+    list.forEach(s => {
+      const node = els.tplScheduleCard.content.firstElementChild.cloneNode(true);
+      node.querySelector('[data-from]').textContent = s.from;
+      node.querySelector('[data-to]').textContent = s.to;
+      node.querySelector('[data-date]').textContent = s.date;
+      node.querySelector('[data-time]').textContent = s.time;
+      node.querySelector('[data-seats]').textContent = s.seats;
+      node.querySelector('[data-note]').textContent = s.note||'';
+      node.querySelector('[data-driver]').textContent = driverInfo(s.driverId).name;
+      node.querySelector('[data-book]').addEventListener('click', () => openBooking(s));
+      els.searchResults.appendChild(node);
+    });
+  }
+
+  let bookingTarget = null;
+  function openBooking(s){
+    bookingTarget = s;
+    els.bookInfo.textContent = `${s.from} → ${s.to} · ${s.date} ${s.time} · 座位 ${s.seats}`;
+    els.bookDialog.showModal();
+  }
+
+  // 提交预约
+  els.btnSubmitBooking.addEventListener('click', (e) => {
+    e.preventDefault();
+    if(!bookingTarget) return;
+    const name = els.b_name.value.trim();
+    const contact = els.b_contact.value.trim();
+    const note = els.b_note.value.trim();
+    if(!name || !contact){ alert('请填写姓名与联系方式'); return; }
+    const requests = readLS(LS_KEYS.requests);
+    requests.push({ id: uid(), scheduleId: bookingTarget.id, name, contact, note, ts: Date.now() });
+    writeLS(LS_KEYS.requests, requests);
+    els.bookDialog.close();
+    els.b_name.value = els.b_contact.value = els.b_note.value = '';
+    alert('已提交预约请求，司机将看到你的联系方式。');
+    renderDriverRequests();
+  });
+
+  // 渲染收到的请求（基于当前司机）
+  function renderDriverRequests(){
+    const did = currentDriverId();
+    const mySchedules = readLS(LS_KEYS.schedules).filter(s => s.driverId === did);
+    const myIds = new Set(mySchedules.map(s => s.id));
+    const reqs = readLS(LS_KEYS.requests).filter(r => myIds.has(r.scheduleId));
+    els.driverRequests.innerHTML = '';
+    reqs.sort((a,b)=>b.ts-a.ts).forEach(r => {
+      const s = mySchedules.find(x => x.id === r.scheduleId) || {};
+      const node = els.tplRequestCard.content.firstElementChild.cloneNode(true);
+      node.querySelector('[data-name]').textContent = r.name;
+      node.querySelector('[data-contact]').textContent = r.contact;
+      node.querySelector('[data-from]').textContent = s.from||'';
+      node.querySelector('[data-to]').textContent = s.to||'';
+      node.querySelector('[data-date]').textContent = s.date||'';
+      node.querySelector('[data-time]').textContent = s.time||'';
+      node.querySelector('[data-note]').textContent = r.note||'';
+      els.driverRequests.appendChild(node);
+    });
+  }
+
+  // 示例数据
+  els.btnSeed.addEventListener('click', () => {
+    const drivers = [
+      { id: uid(), key: '王师傅__13800000001', name: '王师傅', contact: '13800000001' },
+      { id: uid(), key: 'Lena__wechat:lena888', name: 'Lena', contact: 'wechat:lena888' },
+    ];
+    const today = new Date();
+    const fmt = (d)=> d.toISOString().slice(0,10);
+    const d1 = new Date(today.getTime()+24*3600*1000);
+    const d2 = new Date(today.getTime()+2*24*3600*1000);
+    const schedules = [
+      { id: uid(), driverId: drivers[0].id, from: '上海', to: '杭州', date: fmt(d1), time: '08:30', seats: 3, note: '虹桥高铁站出发' },
+      { id: uid(), driverId: drivers[0].id, from: '杭州', to: '上海', date: fmt(d2), time: '18:00', seats: 2, note: '萧山机场可顺路' },
+      { id: uid(), driverId: drivers[1].id, from: '苏州', to: '上海', date: fmt(d1), time: '07:45', seats: 4, note: '允许携带小宠物' },
+    ];
+    writeLS(LS_KEYS.drivers, drivers);
+    writeLS(LS_KEYS.schedules, schedules);
+    writeLS(LS_KEYS.requests, []);
+    alert('已写入示例数据');
+  });
+
+  // 清空
+  els.btnClear.addEventListener('click', () => {
+    Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
+    alert('已清空本地数据');
+    renderDriverSchedules();
+    renderDriverRequests();
+    els.searchResults.innerHTML = '';
+  });
+
+  // 当司机输入身份变化时，重新渲染其班次和请求
+  ['d_name','d_contact'].forEach(id => {
+    els[id].addEventListener('input', () => { renderDriverSchedules(); renderDriverRequests(); });
+  });
+
+  // 初始化日期默认值（今天）
+  const todayStr = new Date().toISOString().slice(0,10);
+  els.p_date.value = todayStr;
+  els.d_date.value = todayStr;
+
+  </script>
+</body>
+</html>
