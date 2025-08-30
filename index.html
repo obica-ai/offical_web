@@ -1,724 +1,520 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hans">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>城际同行平台</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <style>
-        .fade-in { 
-            animation: fadeIn 0.5s ease-in-out; 
-        }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        input, select, textarea {
-            transition: all 0.2s;
-        }
-        input:focus, select:focus, textarea:focus {
-            ring-2 ring-blue-500 ring-opacity-50;
-            border-color: #3b82f6;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>城际同行 · 北美地址版</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    .fade-in{animation:fadeIn .25s ease-in both}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-blue-600 rounded-lg"></div>
-                    <h1 class="text-xl font-bold text-gray-900">城际同行</h1>
-                </div>
-                <nav class="flex space-x-6">
-                    <button onclick="showSection('passenger')" class="text-gray-600 hover:text-gray-900">乘客</button>
-                    <button onclick="showSection('driver')" class="text-gray-600 hover:text-gray-900">司机</button>
-                </nav>
-            </div>
-        </div>
-    </header>
-
-    <!-- Auth Section -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div id="auth-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-lg font-semibold">用户登录</h2>
-                    <p class="text-gray-600 text-sm">请登录后使用平台功能</p>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span id="user-status" class="text-sm text-gray-600">未登录</span>
-                    <button id="logout-btn" class="hidden px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">退出</button>
-                </div>
-            </div>
-            
-            <div id="login-form" class="mt-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input 
-                        id="email-input" 
-                        type="email" 
-                        placeholder="输入邮箱地址" 
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                    <input 
-                        id="password-input" 
-                        type="password" 
-                        placeholder="输入密码" 
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                </div>
-                <div class="flex space-x-2">
-                    <button 
-                        id="login-btn" 
-                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        登录
-                    </button>
-                    <button 
-                        id="register-btn" 
-                        class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                        注册
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- User Type Selection -->
-        <div id="user-type-section" class="hidden bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 class="text-lg font-semibold mb-4">选择用户类型</h3>
-            <div class="flex space-x-4">
-                <button 
-                    id="passenger-type-btn" 
-                    class="px-6 py-3 border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-300"
-                >
-                    我是乘客
-                </button>
-                <button 
-                    id="driver-type-btn" 
-                    class="px-6 py-3 border border-gray-300 rounded-md hover:bg-green-50 hover:border-green-300"
-                >
-                    我是司机
-                </button>
-            </div>
-        </div>
-
-        <!-- Passenger Section -->
-        <div id="passenger-section" class="hidden">
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 class="text-xl font-bold mb-4">乘客 - 发布行程需求</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <input id="passenger-from" type="text" placeholder="出发城市" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="passenger-to" type="text" placeholder="目的城市" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="passenger-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="passenger-time" type="time" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="passenger-seats" type="number" placeholder="需要座位数" min="1" max="8" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <textarea id="passenger-note" placeholder="备注信息" class="px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                </div>
-                <button id="add-passenger-request" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">发布需求</button>
-            </div>
-
-            <!-- Search Available Drivers -->
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h3 class="text-lg font-semibold mb-4">搜索可用司机</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <input id="search-from" type="text" placeholder="出发城市" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="search-to" type="text" placeholder="目的城市" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="search-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
-                </div>
-                <button id="search-drivers" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">搜索司机</button>
-                <div id="driver-results" class="mt-4 space-y-3"></div>
-            </div>
-
-            <!-- My Requests -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h3 class="text-lg font-semibold mb-4">我的行程需求</h3>
-                <div id="passenger-requests" class="space-y-3"></div>
-            </div>
-        </div>
-
-        <!-- Driver Section -->
-        <div id="driver-section" class="hidden">
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 class="text-xl font-bold mb-4">司机 - 发布可用时间表</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <input id="driver-from" type="text" placeholder="出发城市" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="driver-to" type="text" placeholder="目的城市" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="driver-date" type="date" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="driver-time" type="time" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="driver-seats" type="number" placeholder="可载人数" min="1" max="8" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <input id="driver-price" type="number" placeholder="每人价格(元)" min="0" class="px-3 py-2 border border-gray-300 rounded-md">
-                    <textarea id="driver-note" placeholder="备注信息" class="px-3 py-2 border border-gray-300 rounded-md col-span-full"></textarea>
-                </div>
-                <button id="add-driver-schedule" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">发布时间表</button>
-            </div>
-
-            <!-- My Schedules -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h3 class="text-lg font-semibold mb-4">我的行程时间表</h3>
-                <div id="driver-schedules" class="space-y-3"></div>
-            </div>
-        </div>
+  <!-- 顶部栏 -->
+  <header class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-blue-600"></div>
+        <h1 class="text-lg font-semibold">城际同行</h1>
+      </div>
+      <nav class="flex items-center gap-2 text-sm">
+        <button id="nav-passenger" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</button>
+        <button id="nav-driver" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</button>
+      </nav>
     </div>
+  </header>
 
-    <script>
-        // Supabase Configuration
-        const SUPABASE_URL = 'https://ddycdlhhgezffmybssvw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo';
-        
-        // Initialize Supabase client
-        let supabaseClient;
-        let currentUser = null;
-        let userType = null;
+  <!-- 环境状态条 -->
+  <div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+      未检测到 Supabase 配置。设置 <code>window.SUPABASE_URL</code>/<code>window.SUPABASE_ANON_KEY</code> 或在地址栏追加 <code>?sbUrl=...&sbKey=...</code>。
+    </div>
+  </div>
 
-        // Initialize app when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
+  <!-- 通知条 -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Auth -->
+    <section class="bg-white rounded-xl border shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-semibold">用户登录</h2>
+          <p class="text-gray-500 text-sm">邮箱+密码，或发送登录链接（Magic Link）</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="authStatus" class="text-sm text-gray-600">未登录</span>
+          <button id="btnEditProfile" class="hidden px-3 py-1.5 rounded-md border text-sm">资料</button>
+          <button id="btnSignOut" class="hidden px-3 py-1.5 rounded-md border text-sm">退出</button>
+        </div>
+      </div>
+      <div id="authBox" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input id="authEmail" type="email" placeholder="邮箱" class="px-3 py-2 border rounded-md">
+        <input id="authPass" type="password" placeholder="密码（≥6位）" class="px-3 py-2 border rounded-md">
+        <div class="flex gap-2">
+          <button id="btnLogin" class="px-4 py-2 rounded-md bg-blue-600 text-white">登录</button>
+          <button id="btnRegister" class="px-4 py-2 rounded-md bg-green-600 text-white">注册</button>
+          <button id="btnMagic" class="px-4 py-2 rounded-md border">发登录链接</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 个人资料 -->
+    <section id="profile-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+      <h3 class="text-lg font-semibold mb-4">个人资料</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input id="profile-name" type="text" placeholder="姓名" class="px-3 py-2 border rounded-md">
+        <input id="profile-phone" type="tel" placeholder="手机号" class="px-3 py-2 border rounded-md">
+        <input id="profile-id-number" type="text" placeholder="身份证/驾照号" class="px-3 py-2 border rounded-md">
+        <select id="profile-gender" class="px-3 py-2 border rounded-md">
+          <option value="">性别</option><option value="male">男</option><option value="female">女</option>
+        </select>
+        <input id="profile-age" type="number" min="18" max="100" placeholder="年龄" class="px-3 py-2 border rounded-md">
+        <input id="profile-bio" type="text" placeholder="简介（可选）" class="px-3 py-2 border rounded-md">
+      </div>
+      <div class="mt-4">
+        <button id="btnSaveProfile" class="px-4 py-2 rounded-md bg-blue-600 text-white">保存资料</button>
+      </div>
+    </section>
+
+    <!-- 乘客 -->
+    <section id="passenger-section" class="hidden">
+      <div class="bg-white rounded-xl border shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4">乘客 - 发布行程需求</h2>
+
+        <!-- 出发地址 -->
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">出发地址</h4>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Country</label>
+            <select id="passenger-origin-country" class="w-full px-3 py-2 border rounded-md">
+              <option value="US" selected>United States</option>
+              <option value="CA">Canada</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs text-gray-500">Street address</label>
+            <input id="passenger-origin-street1" placeholder="123 Main St" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Apt / Unit（可选）</label>
+            <input id="passenger-origin-street2" placeholder="Apt 5B" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">City</label>
+            <input id="passenger-origin-city" placeholder="San Francisco" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">State/Prov.</label>
+            <input id="passenger-origin-state" list="na-states" placeholder="CA" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">ZIP/Postal</label>
+            <input id="passenger-origin-postal" placeholder="94105 或 M5V 2T6" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+        </div>
+
+        <!-- 目的地地址 -->
+        <h4 class="text-sm font-semibold text-gray-700 mt-4 mb-2">目的地地址</h4>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Country</label>
+            <select id="passenger-dest-country" class="w-full px-3 py-2 border rounded-md">
+              <option value="US" selected>United States</option>
+              <option value="CA">Canada</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs text-gray-500">Street address</label>
+            <input id="passenger-dest-street1" placeholder="456 King St W" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Apt / Unit（可选）</label>
+            <input id="passenger-dest-street2" placeholder="Suite 210" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">City</label>
+            <input id="passenger-dest-city" placeholder="Toronto" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">State/Prov.</label>
+            <input id="passenger-dest-state" list="na-states" placeholder="ON" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">ZIP/Postal</label>
+            <input id="passenger-dest-postal" placeholder="10001 或 H3Z 2Y7" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+        </div>
+
+        <!-- 其它字段 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
+          <input id="passenger-date" type="date" class="px-3 py-2 border rounded-md">
+          <input id="passenger-time" type="time" class="px-3 py-2 border rounded-md">
+          <input id="passenger-seats" type="number" min="1" max="8" placeholder="需要座位数" class="px-3 py-2 border rounded-md">
+          <input id="passenger-note" placeholder="备注（可选）" class="px-3 py-2 border rounded-md md:col-span-1">
+        </div>
+
+        <div class="mt-4">
+          <button id="add-passenger-request" class="px-5 py-2 rounded-md bg-blue-600 text-white">发布需求</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 司机 -->
+    <section id="driver-section" class="hidden">
+      <div class="bg-white rounded-xl border shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4">司机 - 发布可用时间表</h2>
+
+        <!-- 出发地址 -->
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">出发地址</h4>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Country</label>
+            <select id="driver-origin-country" class="w-full px-3 py-2 border rounded-md">
+              <option value="US" selected>United States</option>
+              <option value="CA">Canada</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs text-gray-500">Street address</label>
+            <input id="driver-origin-street1" placeholder="123 Main St" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Apt / Unit（可选）</label>
+            <input id="driver-origin-street2" placeholder="Apt 5B" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">City</label>
+            <input id="driver-origin-city" placeholder="San Francisco" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">State/Prov.</label>
+            <input id="driver-origin-state" list="na-states" placeholder="CA" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">ZIP/Postal</label>
+            <input id="driver-origin-postal" placeholder="94105 或 M5V 2T6" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+        </div>
+
+        <!-- 目的地地址 -->
+        <h4 class="text-sm font-semibold text-gray-700 mt-4 mb-2">目的地地址</h4>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Country</label>
+            <select id="driver-dest-country" class="w-full px-3 py-2 border rounded-md">
+              <option value="US" selected>United States</option>
+              <option value="CA">Canada</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs text-gray-500">Street address</label>
+            <input id="driver-dest-street1" placeholder="456 King St W" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">Apt / Unit（可选）</label>
+            <input id="driver-dest-street2" placeholder="Suite 210" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-500">City</label>
+            <input id="driver-dest-city" placeholder="Toronto" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">State/Prov.</label>
+            <input id="driver-dest-state" list="na-states" placeholder="ON" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+          <div class="md:col-span-1">
+            <label class="block text-xs text-gray-500">ZIP/Postal</label>
+            <input id="driver-dest-postal" placeholder="10001 或 H3Z 2Y7" class="w-full px-3 py-2 border rounded-md uppercase">
+          </div>
+        </div>
+
+        <!-- 其它字段 -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4">
+          <input id="driver-date" type="date" class="px-3 py-2 border rounded-md">
+          <input id="driver-time" type="time" class="px-3 py-2 border rounded-md">
+          <input id="driver-seats" type="number" min="1" max="8" placeholder="可载人数" class="px-3 py-2 border rounded-md">
+          <input id="driver-price" type="number" min="0" step="0.01" placeholder="每人价格(元)" class="px-3 py-2 border rounded-md">
+          <input id="driver-note" placeholder="备注（可选）" class="px-3 py-2 border rounded-md">
+        </div>
+
+        <div class="mt-4">
+          <button id="add-driver-schedule" class="px-5 py-2 rounded-md bg-green-600 text-white">发布时间表</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 北美州/省缩写（US + CA） -->
+  <datalist id="na-states">
+    <!-- US -->
+    <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option><option>CO</option><option>CT</option><option>DE</option><option>DC</option><option>FL</option><option>GA</option><option>HI</option><option>ID</option><option>IL</option><option>IN</option><option>IA</option><option>KS</option><option>KY</option><option>LA</option><option>ME</option><option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option><option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option><option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option><option>OK</option><option>OR</option><option>PA</option><option>RI</option><option>SC</option><option>SD</option><option>TN</option><option>TX</option><option>UT</option><option>VT</option><option>VA</option><option>WA</option><option>WV</option><option>WI</option><option>WY</option>
+    <!-- CA -->
+    <option>AB</option><option>BC</option><option>MB</option><option>NB</option><option>NL</option><option>NS</option><option>NT</option><option>NU</option><option>ON</option><option>PE</option><option>QC</option><option>SK</option><option>YT</option>
+  </datalist>
+
+  <script>
+    // —— 环境注入：支持 ?sbUrl=...&sbKey=... ——
+    (function(){
+      try{
+        const usp = new URLSearchParams(location.search);
+        const u = usp.get('sbUrl'); const k = usp.get('sbKey');
+        if(u && k){ window.SUPABASE_URL = u; window.SUPABASE_ANON_KEY = k; }
+      }catch(e){}
+    })();
+
+    const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+
+    if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR-PROJECT') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY==='YOUR-ANON-KEY') {
+      document.getElementById('statusBar').classList.remove('hidden');
+    }
+
+    // —— Supabase 初始化 ——
+    const sb = (typeof supabase!=='undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    // —— UI 工具 ——
+    function toast(msg, type='info'){
+      const t = document.getElementById('toast');
+      t.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50';
+      t.innerHTML = '<div class="px-4 py-2 rounded-md shadow border '+(type==='error'?'bg-red-50 text-red-700 border-red-200':'bg-emerald-50 text-emerald-700 border-emerald-200')+'">'+msg+'</div>';
+      t.classList.remove('hidden');
+      setTimeout(()=>t.classList.add('hidden'), 3000);
+    }
+    function showSection(name){
+      ['profile','passenger','driver'].forEach(s=>{
+        const el=document.getElementById(s+'-section');
+        if(el) el.classList.add('hidden');
+      });
+      const target=document.getElementById(name+'-section');
+      if(target){ target.classList.remove('hidden'); target.classList.add('fade-in'); }
+    }
+
+    // —— 地址处理 ——
+    function normalizePostal(country, v){
+      if(!v) return null;
+      v = v.toUpperCase().trim();
+      if(country==='CA') return v.replace(/\s+/g,''); // 存储去空格
+      return v;
+    }
+    function isValidPostal(country, v){
+      if(!v) return false;
+      if(country==='US') return /^\d{5}(-\d{4})?$/.test(v);
+      if(country==='CA') return /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/.test(v);
+      return false;
+    }
+    function readAddress(prefix){
+      const country = document.getElementById(prefix+'-country').value || 'US';
+      const street1 = document.getElementById(prefix+'-street1').value.trim();
+      const street2 = document.getElementById(prefix+'-street2').value.trim();
+      const city    = document.getElementById(prefix+'-city').value.trim();
+      const state   = (document.getElementById(prefix+'-state').value || '').trim().toUpperCase();
+      const postal  = normalizePostal(country, document.getElementById(prefix+'-postal').value);
+      if(!street1 || !city || !state || !postal) return {ok:false,msg:'请完整填写地址（街道/城市/州/邮编）'};
+      if(!isValidPostal(country, postal)) return {ok:false,msg:'邮编格式不正确（US: 12345/12345-6789；CA: A1A 1A1）'};
+      return {ok:true,data:{country,street1,street2:street2||null,city,state,postal}};
+    }
+
+    // —— 资料 upsert（优先 RPC，失败降级为直接 upsert 表） ——
+    async function saveOrCreateProfile(){
+      const payload = {
+        p_full_name: document.getElementById('profile-name')?.value?.trim() || null,
+        p_phone:     document.getElementById('profile-phone')?.value?.trim() || null,
+        p_id_number: document.getElementById('profile-id-number')?.value?.trim() || null,
+        p_gender:    document.getElementById('profile-gender')?.value || null,
+        p_age:       document.getElementById('profile-age')?.value ? parseInt(document.getElementById('profile-age').value,10) : null,
+        p_bio:       document.getElementById('profile-bio')?.value?.trim() || null,
+      };
+      // 尝试 RPC
+      try {
+        const { data, error } = await sb.rpc('upsert_my_profile', payload);
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        // fallback：直接写表（要求 user_profiles 策略允许本人 upsert）
+        const { data: sess } = await sb.auth.getUser();
+        const uid = sess?.user?.id;
+        const { data, error } = await sb.from('user_profiles').upsert({
+          user_id: uid,
+          full_name: payload.p_full_name, phone: payload.p_phone, id_number: payload.p_id_number,
+          gender: payload.p_gender, age: payload.p_age, bio: payload.p_bio, updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' }).select().single();
+        if (error) throw error;
+        return data;
+      }
+    }
+
+    // —— 业务提交：乘客 ——
+    async function addPassengerRequest(){
+      const { data: sess } = await sb.auth.getSession();
+      if(!sess?.session){ toast('请先登录', 'error'); return; }
+
+      // 先保存/创建资料（允许为空）
+      try { await saveOrCreateProfile(); } catch(e){ toast('保存个人资料失败：'+e.message,'error'); return; }
+
+      const o = readAddress('passenger-origin'); if(!o.ok){ toast(o.msg,'error'); return; }
+      const d = readAddress('passenger-dest');   if(!d.ok){ toast(d.msg,'error'); return; }
+
+      const date  = document.getElementById('passenger-date').value;
+      const time  = document.getElementById('passenger-time').value;
+      const seats = parseInt(document.getElementById('passenger-seats').value,10);
+      const note  = document.getElementById('passenger-note').value.trim();
+
+      if(!date || !time || !seats || seats<=0){ toast('日期/时间/座位必填','error'); return; }
+
+      const btn = document.getElementById('add-passenger-request');
+      btn.disabled = true; btn.textContent = '提交中…';
+      try{
+        const { error } = await sb.from('passenger_requests').insert({
+          user_id: sess.session.user.id,
+          date, time, seats_needed: seats, note,
+          origin_country: o.data.country,
+          origin_street1: o.data.street1,
+          origin_street2: o.data.street2,
+          origin_city:    o.data.city,
+          origin_state:   o.data.state,
+          origin_postal_code: o.data.postal,
+          destination_country: d.data.country,
+          destination_street1: d.data.street1,
+          destination_street2: d.data.street2,
+          destination_city:    d.data.city,
+          destination_state:   d.data.state,
+          destination_postal_code: d.data.postal,
+          // 兼容老列（如仍存在）
+          from_city: o.data.city, to_city: d.data.city
         });
+        if(error) throw error;
+        toast('需求发布成功','success');
+      }catch(e){ toast('发布失败：'+e.message,'error'); }
+      finally{ btn.disabled=false; btn.textContent='发布需求'; }
+    }
 
-        function initializeApp() {
-            try {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                setupEventListeners();
-                checkAuthState();
-                
-                // Listen for auth state changes
-                supabaseClient.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_IN') {
-                        currentUser = session.user;
-                        updateAuthUI();
-                    } else if (event === 'SIGNED_OUT') {
-                        currentUser = null;
-                        userType = null;
-                        updateAuthUI();
-                        hideAllSections();
-                    }
-                });
-            } catch (error) {
-                console.error('初始化失败:', error);
-                showMessage('初始化失败，请检查配置', 'error');
-            }
-        }
+    // —— 业务提交：司机 ——
+    async function addDriverSchedule(){
+      const { data: sess } = await sb.auth.getSession();
+      if(!sess?.session){ toast('请先登录','error'); return; }
 
-        function setupEventListeners() {
-            // Auth events
-            document.getElementById('login-btn').addEventListener('click', handleLogin);
-            document.getElementById('register-btn').addEventListener('click', handleRegister);
-            document.getElementById('logout-btn').addEventListener('click', handleLogout);
-            
-            // User type selection
-            document.getElementById('passenger-type-btn').addEventListener('click', () => setUserType('passenger'));
-            document.getElementById('driver-type-btn').addEventListener('click', () => setUserType('driver'));
+      try { await saveOrCreateProfile(); } catch(e){ toast('保存个人资料失败：'+e.message,'error'); return; }
 
-            // Passenger events
-            document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
-            document.getElementById('search-drivers').addEventListener('click', searchDrivers);
+      const o = readAddress('driver-origin'); if(!o.ok){ toast(o.msg,'error'); return; }
+      const d = readAddress('driver-dest');   if(!d.ok){ toast(d.msg,'error'); return; }
 
-            // Driver events
-            document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
-        }
+      const date  = document.getElementById('driver-date').value;
+      const time  = document.getElementById('driver-time').value;
+      const seats = parseInt(document.getElementById('driver-seats').value,10);
+      const price = parseFloat(document.getElementById('driver-price').value) || 0;
+      const note  = document.getElementById('driver-note').value.trim();
 
-        async function checkAuthState() {
-            if (!supabaseClient) return;
+      if(!date || !time || !seats || seats<=0){ toast('日期/时间/座位必填','error'); return; }
 
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                updateAuthUI();
-                await loadUserData();
-            }
-        }
+      const btn = document.getElementById('add-driver-schedule');
+      btn.disabled = true; btn.textContent = '提交中…';
+      try{
+        const { error } = await sb.from('driver_schedules').insert({
+          user_id: sess.session.user.id,
+          date, time, available_seats: seats, price_per_person: isNaN(price)?0:price, note,
+          origin_country: o.data.country,
+          origin_street1: o.data.street1,
+          origin_street2: o.data.street2,
+          origin_city:    o.data.city,
+          origin_state:   o.data.state,
+          origin_postal_code: o.data.postal,
+          destination_country: d.data.country,
+          destination_street1: d.data.street1,
+          destination_street2: d.data.street2,
+          destination_city:    d.data.city,
+          destination_state:   d.data.state,
+          destination_postal_code: d.data.postal,
+          from_city: o.data.city, to_city: d.data.city
+        });
+        if(error) throw error;
+        toast('时间表发布成功','success');
+      }catch(e){ toast('发布失败：'+e.message,'error'); }
+      finally{ btn.disabled=false; btn.textContent='发布时间表'; }
+    }
 
-        async function handleLogin() {
-            const email = document.getElementById('email-input')?.value.trim();
-            const password = document.getElementById('password-input')?.value.trim();
-            if (!email || !password) { showMessage('请输入邮箱和密码', 'error'); return; }
-            
-            const btn = document.getElementById('login-btn');
-            btn.disabled = true; btn.textContent = '登录中...';
-            
-            try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) {
-              console.error('[Login] error =', error, 'status=', error?.status, 'msg=', error?.message);
-              showMessage('登录失败：' + (error.message || 'Bad Request'), 'error');
-              return;
-            }
-            showMessage('登录成功！', 'success');
-            clearAuthForm();
-            } catch (e) {
-            console.error('[Login] exception', e);
-            showMessage('登录异常：' + e.message, 'error');
-            } finally {
-            btn.disabled = false; btn.textContent = '登录';
-            }
-            }
+    // —— 资料单独保存按钮（可选） ——
+    async function saveProfileButton(){
+      const { data: sess } = await sb.auth.getSession();
+      if(!sess?.session){ toast('请先登录','error'); return; }
+      try{ await saveOrCreateProfile(); toast('资料已保存','success'); }
+      catch(e){ toast('保存失败：'+e.message,'error'); }
+    }
 
+    // —— Auth 相关 ——
+    async function login(){
+      const email = document.getElementById('authEmail').value.trim();
+      const pass  = document.getElementById('authPass').value.trim();
+      if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
+      const btn = document.getElementById('btnLogin'); btn.disabled=true; btn.textContent='登录中…';
+      try{
+        const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+        if(error) throw error;
+        toast('登录成功','success');
+      }catch(e){ toast('登录失败：'+(e.message||'Bad Request'),'error'); }
+      finally{ btn.disabled=false; btn.textContent='登录'; }
+    }
+    async function register(){
+      const email = document.getElementById('authEmail').value.trim();
+      const pass  = document.getElementById('authPass').value.trim();
+      if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
+      const btn = document.getElementById('btnRegister'); btn.disabled=true; btn.textContent='注册中…';
+      try{
+        const { data, error } = await sb.auth.signUp({ email, password: pass });
+        if(error) throw error;
+        if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
+        else toast('注册成功！','success');
+      }catch(e){ toast('注册失败：'+(e.message||'Database error'),'error'); }
+      finally{ btn.disabled=false; btn.textContent='注册'; }
+    }
+    async function magicLink(){
+      const email = document.getElementById('authEmail').value.trim();
+      if(!email){ toast('请输入邮箱','error'); return; }
+      const btn = document.getElementById('btnMagic'); btn.disabled=true; btn.textContent='发送中…';
+      try{
+        const redirect = location.href;
+        const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirect } });
+        if(error) throw error;
+        toast('已发送登录链接，请查收邮箱','success');
+      }catch(e){ toast('发送失败：'+(e.message||'配置错误（检查 Redirect URLs）'),'error'); }
+      finally{ btn.disabled=false; btn.textContent='发登录链接'; }
+    }
+    async function signOut(){
+      await sb.auth.signOut(); toast('已退出','success');
+    }
 
-        async function handleRegister() {
-          const email = document.getElementById('email-input')?.value.trim();
-          const password = document.getElementById('password-input')?.value.trim();
-          if (!email || !password) { showMessage('请输入邮箱和密码', 'error'); return; }
-        
-          const btn = document.getElementById('register-btn');
-          btn.disabled = true; btn.textContent = '注册中...';
-        
-          try {
-            const { data, error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) throw error;
-        
-            if (data.user && !data.session) {
-              // 说明开启了“Email confirmations”，必须去邮箱点确认
-              showMessage('注册成功！请打开邮箱点击确认链接后再登录。', 'success');
-            } else {
-              showMessage('注册成功！', 'success');
-            }
-            clearAuthForm();
-          } catch (e) {
-            console.error('[Register] error', e);
-            showMessage('注册失败：' + e.message, 'error');
-          } finally {
-            btn.disabled = false; btn.textContent = '注册';
-          }
-        }
+    // —— 初始化与事件绑定 ——
+    document.getElementById('nav-passenger').addEventListener('click', ()=>showSection('passenger'));
+    document.getElementById('nav-driver').addEventListener('click', ()=>showSection('driver'));
+    document.getElementById('btnLogin').addEventListener('click', login);
+    document.getElementById('btnRegister').addEventListener('click', register);
+    document.getElementById('btnMagic').addEventListener('click', magicLink);
+    document.getElementById('btnSignOut').addEventListener('click', signOut);
+    document.getElementById('btnEditProfile').addEventListener('click', ()=>showSection('profile'));
+    document.getElementById('btnSaveProfile').addEventListener('click', saveProfileButton);
+    document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
+    document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
 
+    // 会话恢复
+    (async ()=>{
+      const { data:{ session } } = await sb.auth.getSession();
+      updateAuthUI(session);
+    })();
 
-        async function handleLogout() {
-            await supabaseClient.auth.signOut();
-            currentUser = null;
-            userType = null;
-            updateAuthUI();
-            hideAllSections();
-        }
+    // 监听会话变更
+    sb.auth.onAuthStateChange((_evt, session)=> updateAuthUI(session));
 
-        function updateAuthUI() {
-            const userStatus = document.getElementById('user-status');
-            const loginForm = document.getElementById('login-form');
-            const logoutBtn = document.getElementById('logout-btn');
-            const userTypeSection = document.getElementById('user-type-section');
-
-            if (currentUser) {
-                userStatus.textContent = `已登录: ${currentUser.email}`;
-                loginForm.classList.add('hidden');
-                logoutBtn.classList.remove('hidden');
-                userTypeSection.classList.remove('hidden');
-            } else {
-                userStatus.textContent = '未登录';
-                loginForm.classList.remove('hidden');
-                logoutBtn.classList.add('hidden');
-                userTypeSection.classList.add('hidden');
-            }
-        }
-
-        function setUserType(type) {
-            userType = type;
-            showSection(type);
-            loadUserData();
-        }
-
-        function showSection(sectionName) {
-            hideAllSections();
-            const section = document.getElementById(sectionName + '-section');
-            if (section) {
-                section.classList.remove('hidden');
-                section.classList.add('fade-in');
-            }
-        }
-
-        function hideAllSections() {
-            ['passenger-section', 'driver-section'].forEach(id => {
-                const section = document.getElementById(id);
-                if (section) {
-                    section.classList.add('hidden');
-                }
-            });
-        }
-
-        async function addPassengerRequest() {
-            if (!currentUser) {
-                showMessage('请先登录', 'error');
-                return;
-            }
-        // ① 先尝试保存/创建个人资料（从资料表单取值；没有表单也没关系，会传 null）
-              try {
-                const nameEl    = document.getElementById('profile-name');
-                const phoneEl   = document.getElementById('profile-phone');
-                const idEl      = document.getElementById('profile-id-number');
-                const genderEl  = document.getElementById('profile-gender');
-                const ageEl     = document.getElementById('profile-age');
-                const bioEl     = document.getElementById('profile-bio');
-            
-                const name     = nameEl?.value?.trim() || null;
-                const phone    = phoneEl?.value?.trim() || null;
-                const idNumber = idEl?.value?.trim() || null;
-                const gender   = genderEl?.value || null;
-                const age      = ageEl?.value ? parseInt(ageEl.value, 10) : null;
-                const bio      = bioEl?.value?.trim() || null;
-            
-                // ★ 关键：调用数据库函数，由后端用 auth.uid() 绑定到本人，无需传 user_id
-                const { error: profErr } = await supabaseClient.rpc('upsert_my_profile', {
-                  p_full_name: name,
-                  p_phone: phone,
-                  p_id_number: idNumber,
-                  p_gender: gender,
-                  p_age: age,
-                  p_bio: bio,
-                });
-                if (profErr) throw profErr;
-              } catch (e) {
-                showMessage('保存个人资料失败：' + e.message, 'error');
-                return; // 资料都保存不了，就先别发需求了
-              }
-            const fromCity = document.getElementById('passenger-from').value.trim();
-            const toCity = document.getElementById('passenger-to').value.trim();
-            const date = document.getElementById('passenger-date').value;
-            const time = document.getElementById('passenger-time').value;
-            const seats = document.getElementById('passenger-seats').value;
-            const note = document.getElementById('passenger-note').value.trim();
-
-            if (!fromCity || !toCity || !date || !time || !seats) {
-                showMessage('请填写完整信息', 'error');
-                return;
-            }
-
-            try {
-                const { error } = await supabaseClient
-                    .from('passenger_requests')
-                    .insert({
-                        user_id: currentUser.id,
-                        from_city: fromCity,
-                        to_city: toCity,
-                        date: date,
-                        time: time,
-                        seats_needed: parseInt(seats),
-                        note: note
-                    });
-
-                if (error) throw error;
-
-                showMessage('需求发布成功', 'success');
-                clearPassengerForm();
-                loadPassengerRequests();
-            } catch (error) {
-                showMessage('发布失败: ' + error.message, 'error');
-            }
-        }
-
-        async function addDriverSchedule() {
-            if (!currentUser) {
-                showMessage('请先登录', 'error');
-                return;
-            }
-            // ① 先尝试保存/创建个人资料（从资料表单取值；没有表单也没关系，会传 null）
-          try {
-            const nameEl    = document.getElementById('profile-name');
-            const phoneEl   = document.getElementById('profile-phone');
-            const idEl      = document.getElementById('profile-id-number');
-            const genderEl  = document.getElementById('profile-gender');
-            const ageEl     = document.getElementById('profile-age');
-            const bioEl     = document.getElementById('profile-bio');
-        
-            const name     = nameEl?.value?.trim() || null;
-            const phone    = phoneEl?.value?.trim() || null;
-            const idNumber = idEl?.value?.trim() || null;
-            const gender   = genderEl?.value || null;
-            const age      = ageEl?.value ? parseInt(ageEl.value, 10) : null;
-            const bio      = bioEl?.value?.trim() || null;
-        
-            // ★ 关键：调用数据库函数，由后端用 auth.uid() 绑定到本人，无需传 user_id
-            const { error: profErr } = await supabaseClient.rpc('upsert_my_profile', {
-              p_full_name: name,
-              p_phone: phone,
-              p_id_number: idNumber,
-              p_gender: gender,
-              p_age: age,
-              p_bio: bio,
-            });
-            if (profErr) throw profErr;
-          } catch (e) {
-            showMessage('保存个人资料失败：' + e.message, 'error');
-            return; // 资料都保存不了，就先别发需求了
-          }
-            const fromCity = document.getElementById('driver-from').value.trim();
-            const toCity = document.getElementById('driver-to').value.trim();
-            const date = document.getElementById('driver-date').value;
-            const time = document.getElementById('driver-time').value;
-            const seats = document.getElementById('driver-seats').value;
-            const price = document.getElementById('driver-price').value;
-            const note = document.getElementById('driver-note').value.trim();
-
-            if (!fromCity || !toCity || !date || !time || !seats) {
-                showMessage('请填写完整信息', 'error');
-                return;
-            }
-
-            try {
-                const { error } = await supabaseClient
-                    .from('driver_schedules')
-                    .insert({
-                        user_id: currentUser.id,
-                        from_city: fromCity,
-                        to_city: toCity,
-                        date: date,
-                        time: time,
-                        available_seats: parseInt(seats),
-                        price_per_person: parseFloat(price) || 0,
-                        note: note
-                    });
-
-                if (error) throw error;
-
-                showMessage('时间表发布成功', 'success');
-                clearDriverForm();
-                loadDriverSchedules();
-            } catch (error) {
-                showMessage('发布失败: ' + error.message, 'error');
-            }
-        }
-
-        async function searchDrivers() {
-            const fromCity = document.getElementById('search-from').value.trim();
-            const toCity = document.getElementById('search-to').value.trim();
-            const date = document.getElementById('search-date').value;
-
-            let query = supabaseClient
-                .from('driver_schedules')
-                .select('*')
-                .gte('date', new Date().toISOString().split('T')[0])
-                .order('date')
-                .order('time');
-
-            if (fromCity) {
-                query = query.ilike('from_city', `%${fromCity}%`);
-            }
-            if (toCity) {
-                query = query.ilike('to_city', `%${toCity}%`);
-            }
-            if (date) {
-                query = query.eq('date', date);
-            }
-
-            try {
-                const { data, error } = await query;
-                if (error) throw error;
-
-                displayDriverResults(data);
-            } catch (error) {
-                showMessage('搜索失败: ' + error.message, 'error');
-            }
-        }
-
-        function displayDriverResults(results) {
-            const container = document.getElementById('driver-results');
-            container.innerHTML = '';
-
-            if (!results || results.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">没有找到符合条件的司机</p>';
-                return;
-            }
-
-            results.forEach(schedule => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-gray-200 rounded-md';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold">${schedule.from_city} → ${schedule.to_city}</h4>
-                            <p class="text-sm text-gray-600">日期: ${schedule.date} ${schedule.time}</p>
-                            <p class="text-sm text-gray-600">可载: ${schedule.available_seats}人</p>
-                            <p class="text-sm text-gray-600">价格: ¥${schedule.price_per_person || 0}/人</p>
-                            ${schedule.note ? `<p class="text-sm text-gray-500">${schedule.note}</p>` : ''}
-                        </div>
-                        <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700" 
-                                onclick="contactDriver('${schedule.user_id}')">
-                            联系司机
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function loadUserData() {
-            if (!currentUser) return;
-
-            if (userType === 'passenger') {
-                loadPassengerRequests();
-            } else if (userType === 'driver') {
-                loadDriverSchedules();
-            }
-        }
-
-        async function loadPassengerRequests() {
-            if (!currentUser) return;
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('passenger_requests')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-                displayPassengerRequests(data);
-            } catch (error) {
-                console.error('加载乘客请求失败:', error);
-            }
-        }
-
-        async function loadDriverSchedules() {
-            if (!currentUser) return;
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('driver_schedules')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('date')
-                    .order('time');
-
-                if (error) throw error;
-                displayDriverSchedules(data);
-            } catch (error) {
-                console.error('加载司机时间表失败:', error);
-            }
-        }
-
-        function displayPassengerRequests(requests) {
-            const container = document.getElementById('passenger-requests');
-            container.innerHTML = '';
-
-            if (!requests || requests.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">暂无行程需求</p>';
-                return;
-            }
-
-            requests.forEach(request => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-gray-200 rounded-md';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold">${request.from_city} → ${request.to_city}</h4>
-                            <p class="text-sm text-gray-600">日期: ${request.date} ${request.time}</p>
-                            <p class="text-sm text-gray-600">需要: ${request.seats_needed}个座位</p>
-                            ${request.note ? `<p class="text-sm text-gray-500">${request.note}</p>` : ''}
-                        </div>
-                        <button class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700" 
-                                onclick="deletePassengerRequest('${request.id}')">
-                            删除
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function displayDriverSchedules(schedules) {
-            const container = document.getElementById('driver-schedules');
-            container.innerHTML = '';
-
-            if (!schedules || schedules.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">暂无行程时间表</p>';
-                return;
-            }
-
-            schedules.forEach(schedule => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-gray-200 rounded-md';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-semibold">${schedule.from_city} → ${schedule.to_city}</h4>
-                            <p class="text-sm text-gray-600">日期: ${schedule.date} ${schedule.time}</p>
-                            <p class="text-sm text-gray-600">可载: ${schedule.available_seats}人</p>
-                            <p class="text-sm text-gray-600">价格: ¥${schedule.price_per_person || 0}/人</p>
-                            ${schedule.note ? `<p class="text-sm text-gray-500">${schedule.note}</p>` : ''}
-                        </div>
-                        <button class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700" 
-                                onclick="deleteDriverSchedule('${schedule.id}')">
-                            删除
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function deletePassengerRequest(id) {
-            if (!confirm('确定要删除这个行程需求吗？')) return;
-
-            try {
-                const { error } = await supabaseClient
-                    .from('passenger_requests')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-                showMessage('删除成功', 'success');
-                loadPassengerRequests();
-            } catch (error) {
-                showMessage('删除失败: ' + error.message, 'error');
-            }
-        }
-
-        async function deleteDriverSchedule(id) {
-            if (!confirm('确定要删除这个时间表吗？')) return;
-
-            try {
-                const { error } = await supabaseClient
-                    .from('driver_schedules')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-                showMessage('删除成功', 'success');
-                loadDriverSchedules();
-            } catch (error) {
-                showMessage('删除失败: ' + error.message, 'error');
-            }
-        }
-
-        function contactDriver(driverId) {
-            showMessage('联系功能待开发，司机ID: ' + driverId, 'info');
-        }
-
-        function clearPassengerForm() {
-            ['passenger-from', 'passenger-to', 'passenger-date', 'passenger-time', 'passenger-seats', 'passenger-note'].forEach(id => {
-                document.getElementById(id).value = '';
-            });
-        }
-
-        function clearAuthForm() {
-            document.getElementById('email-input').value = '';
-            document.getElementById('password-input').value = '';
-        }
-
-        function clearDriverForm() {
-            ['driver-from', 'driver-to', 'driver-date', 'driver-time', 'driver-seats', 'driver-price', 'driver-note'].forEach(id => {
-                document.getElementById(id).value = '';
-            });
-        }
-
-        function showMessage(message, type) {
-            const alertClass = {
-                'success': 'bg-green-100 border-green-400 text-green-700',
-                'error': 'bg-red-100 border-red-400 text-red-700',
-                'info': 'bg-blue-100 border-blue-400 text-blue-700'
-            };
-
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `fixed top-4 right-4 z-50 px-4 py-3 border rounded ${alertClass[type]} max-w-sm`;
-            messageDiv.textContent = message;
-
-            document.body.appendChild(messageDiv);
-
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 3000);
-        }
-    </script>
+    function updateAuthUI(session){
+      const authed = !!session?.user;
+      document.getElementById('authStatus').textContent = authed ? `已登录：${session.user.email}` : '未登录';
+      document.getElementById('authBox').classList.toggle('hidden', authed);
+      document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
+      document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
+      // 默认展示乘客页
+      showSection(authed ? 'passenger' : 'profile');
+    }
+  </script>
 </body>
 </html>
