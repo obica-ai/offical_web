@@ -274,7 +274,7 @@ const ui = {
 let currentUser = null;
 let currentProfile = null; // { id, role, full_name, phone }
 
-function requireLogin(){ if(!currentUser){ alert('请先登录 / 注册'); return false;} return true; }
+function requireLogin(){ if(currentUser){ alert('请先登录 / 注册'); return false;} return true; }
 
 // 登录：Magic Link
 ui.btnMagic.addEventListener('click', async ()=>{
