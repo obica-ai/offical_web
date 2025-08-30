@@ -664,10 +664,16 @@
       document.getElementById('authBox').classList.toggle('hidden', authed);
       document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
       document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
-      // 默认展示公告栏（登录后）
-      showSection(authed ? 'board' : 'profile');
-      if (authed) { loadBoard(); setupRealtime(); }
+    
+      // 任何人都先看到公告栏
+      showSection('board');
+      // 都加载一次公告数据（RLS 已放开读取）
+      loadBoard();
+    
+      // Realtime（如果你开启了并允许 anon 订阅，可以保留；否则保留也不会影响读取）
+      try { setupRealtime(); } catch (_) {}
     }
+
   </script>
 </body>
 </html>
