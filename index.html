@@ -412,8 +412,20 @@
       pCount.textContent = `${passengers.length} 条`;
 
       dWrap.innerHTML = drivers.map(r=>{
-        const o = fmtAddr({city:r.origin_city, state:r.origin_state, postal:r.origin_postal_code, street1:r.origin_street1, street2:r.origin_street2});
-        const d = fmtAddr({city:r.destination_city, state:r.destination_state, postal:r.destination_postal_code, street1:r.destination_street1, street2:r.destination_street2});
+          const o = fmtAddr({
+            city:   r.origin_city        || r.from_city        || '-',
+            state:  r.origin_state       || '-',
+            postal: r.origin_postal_code || '',
+            street1:r.origin_street1     || '',
+            street2:r.origin_street2     || ''
+          });
+          const d = fmtAddr({
+            city:   r.destination_city        || r.to_city           || '-',
+            state:  r.destination_state       || '-',
+            postal: r.destination_postal_code || '',
+            street1:r.destination_street1     || '',
+            street2:r.destination_street2     || ''
+          });
         const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
         const price = (r.price_per_person && Number(r.price_per_person)>0) ? `${r.price_per_person}` : '—';
         return card(`
@@ -433,8 +445,20 @@
       }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
 
       pWrap.innerHTML = passengers.map(r=>{
-        const o = fmtAddr({city:r.origin_city, state:r.origin_state, postal:r.origin_postal_code, street1:r.origin_street1, street2:r.origin_street2});
-        const d = fmtAddr({city:r.destination_city, state:r.destination_state, postal:r.destination_postal_code, street1:r.destination_street1, street2:r.destination_street2});
+        const o = fmtAddr({
+          city:   r.origin_city        || r.from_city        || '-',
+          state:  r.origin_state       || '-',
+          postal: r.origin_postal_code || '',
+          street1:r.origin_street1     || '',
+          street2:r.origin_street2     || ''
+        });
+        const d = fmtAddr({
+          city:   r.destination_city        || r.to_city           || '-',
+          state:  r.destination_state       || '-',
+          postal: r.destination_postal_code || '',
+          street1:r.destination_street1     || '',
+          street2:r.destination_street2     || ''
+          });
         const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
         return card(`
           <div class="flex items-start justify-between gap-3">
@@ -453,28 +477,33 @@
     }
 
     async function loadBoard(){
-      const today = new Date().toISOString().slice(0,10);
-      // drivers
+      // 最近30天到未来90天（你也可以直接删掉时间过滤）
+      const now = Date.now();
+      const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
+      const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+    
       const { data: d, error: de } = await sb.from('driver_schedules')
         .select('*')
-        .gte('date', today)
+        .gte('date', start).lte('date', end)
         .order('date', { ascending: true })
         .order('time', { ascending: true })
-        .limit(20);
-      if (de) { console.error('load drivers error', de); toast('加载司机时间表失败：'+de.message,'error'); }
-      // passengers
+        .limit(50);  // 多给点
+    
       const { data: p, error: pe } = await sb.from('passenger_requests')
         .select('*')
-        .gte('date', today)
+        .gte('date', start).lte('date', end)
         .order('date', { ascending: true })
         .order('time', { ascending: true })
-        .limit(20);
+        .limit(50);
+    
+      if (de) { console.error('load drivers error', de); toast('加载司机时间表失败：'+de.message,'error'); }
       if (pe) { console.error('load passenger error', pe); toast('加载乘客需求失败：'+pe.message,'error'); }
-
+    
       boardCache.drivers = d || [];
       boardCache.passengers = p || [];
       renderBoard(document.getElementById('board-filter').value.trim());
     }
+
 
     // —— 业务提交：乘客 ——
     async function addPassengerRequest(){
