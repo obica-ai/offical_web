@@ -33,9 +33,8 @@
                     <h1 class="text-xl font-bold text-gray-900">城际同行</h1>
                 </div>
                 <nav class="flex space-x-6">
-                    <button id="nav-passenger" class="text-gray-600 hover:text-gray-900">乘客</button>
-                    <button id="nav-driver" class="text-gray-600 hover:text-gray-900">司机</button>
-
+                    <button onclick="showSection('passenger')" class="text-gray-600 hover:text-gray-900">乘客</button>
+                    <button onclick="showSection('driver')" class="text-gray-600 hover:text-gray-900">司机</button>
                 </nav>
             </div>
         </div>
@@ -219,11 +218,6 @@
 
             // Driver events
             document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
-            // button
-            document.getElementById('nav-passenger')?.addEventListener('click', () => showSection('passenger'));
-            document.getElementById('nav-driver')?.addEventListener('click', () => showSection('driver'));
-            
-
         }
 
         async function checkAuthState() {
@@ -358,148 +352,89 @@
             });
         }
 
-// 乘客发布需求：先保存/创建个人资料 ➜ 再写 passenger_requests
         async function addPassengerRequest() {
-                  if (!currentUser) { showMessage('请先登录', 'error'); return; }
-                
-                  // 1) 先 upsert 个人资料（取资料表单的值；没有表单也没关系，会传 null）
-                  try {
-                    const name     = document.getElementById('profile-name')?.value?.trim() || null;
-                    const phone    = document.getElementById('profile-phone')?.value?.trim() || null;
-                    const idNumber = document.getElementById('profile-id-number')?.value?.trim() || null;
-                    const gender   = document.getElementById('profile-gender')?.value || null;
-                    const ageStr   = document.getElementById('profile-age')?.value;
-                    const age      = ageStr ? parseInt(ageStr, 10) : null;
-                    const bio      = document.getElementById('profile-bio')?.value?.trim() || null;
-                
-                    const { error: profErr } = await supabaseClient.rpc('upsert_my_profile', {
-                      p_full_name: name,
-                      p_phone: phone,
-                      p_id_number: idNumber,
-                      p_gender: gender,
-                      p_age: age,
-                      p_bio: bio,
-                    });
-                    if (profErr) throw profErr;
-                  } catch (e) {
-                    showMessage('保存个人资料失败：' + e.message, 'error');
-                    return;
-                  }
-                
-                  // 2) 校验并写入乘客需求
-                  const fromCity = document.getElementById('passenger-from').value.trim();
-                  const toCity   = document.getElementById('passenger-to').value.trim();
-                  const date     = document.getElementById('passenger-date').value;
-                  const time     = document.getElementById('passenger-time').value;
-                  const seatsStr = document.getElementById('passenger-seats').value;
-                  const note     = document.getElementById('passenger-note').value.trim();
-                
-                  const seats = parseInt(seatsStr, 10);
-                  if (!fromCity || !toCity || !date || !time || !seats || seats <= 0) {
-                    showMessage('请填写完整信息（座位需为正整数）', 'error');
-                    return;
-                  }
-                
-                  const btn = document.getElementById('add-passenger-request');
-                  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
-                
-                  try {
-                    const { error } = await supabaseClient
-                      .from('passenger_requests')
-                      .insert({
+            if (!currentUser) {
+                showMessage('请先登录', 'error');
+                return;
+            }
+
+            const fromCity = document.getElementById('passenger-from').value.trim();
+            const toCity = document.getElementById('passenger-to').value.trim();
+            const date = document.getElementById('passenger-date').value;
+            const time = document.getElementById('passenger-time').value;
+            const seats = document.getElementById('passenger-seats').value;
+            const note = document.getElementById('passenger-note').value.trim();
+
+            if (!fromCity || !toCity || !date || !time || !seats) {
+                showMessage('请填写完整信息', 'error');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('passenger_requests')
+                    .insert({
                         user_id: currentUser.id,
                         from_city: fromCity,
                         to_city: toCity,
                         date: date,
                         time: time,
-                        seats_needed: seats,
+                        seats_needed: parseInt(seats),
                         note: note
-                      });
-                    if (error) throw error;
-                
-                    showMessage('需求发布成功', 'success');
-                    clearPassengerForm();
-                    loadPassengerRequests();
-                  } catch (error) {
-                    showMessage('发布失败: ' + error.message, 'error');
-                  } finally {
-                    if (btn) { btn.disabled = false; btn.textContent = '发布需求'; }
-                  }
-                }
+                    });
 
-        
+                if (error) throw error;
+
+                showMessage('需求发布成功', 'success');
+                clearPassengerForm();
+                loadPassengerRequests();
+            } catch (error) {
+                showMessage('发布失败: ' + error.message, 'error');
+            }
+        }
+
         async function addDriverSchedule() {
-                  if (!currentUser) { showMessage('请先登录', 'error'); return; }
-                
-                  // 1) 先 upsert 个人资料
-                  try {
-                    const name     = document.getElementById('profile-name')?.value?.trim() || null;
-                    const phone    = document.getElementById('profile-phone')?.value?.trim() || null;
-                    const idNumber = document.getElementById('profile-id-number')?.value?.trim() || null;
-                    const gender   = document.getElementById('profile-gender')?.value || null;
-                    const ageStr   = document.getElementById('profile-age')?.value;
-                    const age      = ageStr ? parseInt(ageStr, 10) : null;
-                    const bio      = document.getElementById('profile-bio')?.value?.trim() || null;
-                
-                    const { error: profErr } = await supabaseClient.rpc('upsert_my_profile', {
-                      p_full_name: name,
-                      p_phone: phone,
-                      p_id_number: idNumber,
-                      p_gender: gender,
-                      p_age: age,
-                      p_bio: bio,
-                    });
-                    if (profErr) throw profErr;
-                  } catch (e) {
-                    showMessage('保存个人资料失败：' + e.message, 'error');
-                    return;
-                  }
-                
-                  // 2) 校验并写入司机时间表
-                  const fromCity = document.getElementById('driver-from').value.trim();
-                  const toCity   = document.getElementById('driver-to').value.trim();
-                  const date     = document.getElementById('driver-date').value;
-                  const time     = document.getElementById('driver-time').value;
-                  const seatsStr = document.getElementById('driver-seats').value;
-                  const priceStr = document.getElementById('driver-price').value;
-                  const note     = document.getElementById('driver-note').value.trim();
-                
-                  const seats = parseInt(seatsStr, 10);
-                  const price = priceStr ? parseFloat(priceStr) : 0;
-                
-                  if (!fromCity || !toCity || !date || !time || !seats || seats <= 0) {
-                    showMessage('请填写完整信息（座位需为正整数）', 'error');
-                    return;
-                  }
-                
-                  const btn = document.getElementById('add-driver-schedule');
-                  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
-                
-                  try {
-                    const { error } = await supabaseClient
-                      .from('driver_schedules')
-                      .insert({
+            if (!currentUser) {
+                showMessage('请先登录', 'error');
+                return;
+            }
+
+            const fromCity = document.getElementById('driver-from').value.trim();
+            const toCity = document.getElementById('driver-to').value.trim();
+            const date = document.getElementById('driver-date').value;
+            const time = document.getElementById('driver-time').value;
+            const seats = document.getElementById('driver-seats').value;
+            const price = document.getElementById('driver-price').value;
+            const note = document.getElementById('driver-note').value.trim();
+
+            if (!fromCity || !toCity || !date || !time || !seats) {
+                showMessage('请填写完整信息', 'error');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('driver_schedules')
+                    .insert({
                         user_id: currentUser.id,
                         from_city: fromCity,
                         to_city: toCity,
                         date: date,
                         time: time,
-                        available_seats: seats,
-                        price_per_person: isNaN(price) ? 0 : price,
+                        available_seats: parseInt(seats),
+                        price_per_person: parseFloat(price) || 0,
                         note: note
-                      });
-                    if (error) throw error;
-                
-                    showMessage('时间表发布成功', 'success');
-                    clearDriverForm();
-                    loadDriverSchedules();
-                  } catch (error) {
-                    showMessage('发布失败: ' + error.message, 'error');
-                  } finally {
-                    if (btn) { btn.disabled = false; btn.textContent = '发布时间表'; }
-                  }
-                }
+                    });
 
+                if (error) throw error;
+
+                showMessage('时间表发布成功', 'success');
+                clearDriverForm();
+                loadDriverSchedules();
+            } catch (error) {
+                showMessage('发布失败: ' + error.message, 'error');
+            }
+        }
 
         async function searchDrivers() {
             const fromCity = document.getElementById('search-from').value.trim();
@@ -742,8 +677,6 @@
                 messageDiv.remove();
             }, 3000);
         }
-        
-
     </script>
 </body>
 </html>
