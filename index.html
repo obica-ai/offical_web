@@ -232,74 +232,58 @@
         }
 
         async function handleLogin() {
-            const email = document.getElementById('email-input').value.trim();
-            const password = document.getElementById('password-input').value.trim();
+            const email = document.getElementById('email-input')?.value.trim();
+            const password = document.getElementById('password-input')?.value.trim();
+            if (!email || !password) { showMessage('请输入邮箱和密码', 'error'); return; }
             
-            if (!email || !password) {
-                showMessage('请输入邮箱和密码', 'error');
-                return;
-            }
-
-            const loginBtn = document.getElementById('login-btn');
-            loginBtn.textContent = '登录中...';
-            loginBtn.disabled = true;
-
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true; btn.textContent = '登录中...';
+            
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
-                if (error) throw error;
-                showMessage('登录成功！', 'success');
-                clearAuthForm();
-            } catch (error) {
-                showMessage('登录失败: ' + error.message, 'error');
-            } finally {
-                loginBtn.textContent = '登录';
-                loginBtn.disabled = false;
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) {
+              console.error('[Login] error =', error, 'status=', error?.status, 'msg=', error?.message);
+              showMessage('登录失败：' + (error.message || 'Bad Request'), 'error');
+              return;
             }
-        }
+            showMessage('登录成功！', 'success');
+            clearAuthForm();
+            } catch (e) {
+            console.error('[Login] exception', e);
+            showMessage('登录异常：' + e.message, 'error');
+            } finally {
+            btn.disabled = false; btn.textContent = '登录';
+            }
+            }
+
 
         async function handleRegister() {
-            const email = document.getElementById('email-input').value.trim();
-            const password = document.getElementById('password-input').value.trim();
-            
-            if (!email || !password) {
-                showMessage('请输入邮箱和密码', 'error');
-                return;
+          const email = document.getElementById('email-input')?.value.trim();
+          const password = document.getElementById('password-input')?.value.trim();
+          if (!email || !password) { showMessage('请输入邮箱和密码', 'error'); return; }
+        
+          const btn = document.getElementById('register-btn');
+          btn.disabled = true; btn.textContent = '注册中...';
+        
+          try {
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
+            if (error) throw error;
+        
+            if (data.user && !data.session) {
+              // 说明开启了“Email confirmations”，必须去邮箱点确认
+              showMessage('注册成功！请打开邮箱点击确认链接后再登录。', 'success');
+            } else {
+              showMessage('注册成功！', 'success');
             }
-
-            if (password.length < 6) {
-                showMessage('密码长度至少需要6位', 'error');
-                return;
-            }
-
-            const registerBtn = document.getElementById('register-btn');
-            registerBtn.textContent = '注册中...';
-            registerBtn.disabled = true;
-
-            try {
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password
-                });
-
-                if (error) throw error;
-                
-                if (data.user && !data.session) {
-                    showMessage('注册成功！请检查邮箱并点击确认链接后再登录', 'success');
-                } else {
-                    showMessage('注册成功！', 'success');
-                }
-                clearAuthForm();
-            } catch (error) {
-                showMessage('注册失败: ' + error.message, 'error');
-            } finally {
-                registerBtn.textContent = '注册';
-                registerBtn.disabled = false;
-            }
+            clearAuthForm();
+          } catch (e) {
+            console.error('[Register] error', e);
+            showMessage('注册失败：' + e.message, 'error');
+          } finally {
+            btn.disabled = false; btn.textContent = '注册';
+          }
         }
+
 
         async function handleLogout() {
             await supabaseClient.auth.signOut();
