@@ -12,6 +12,7 @@
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+  
   <!-- 顶部栏 -->
   <header class="bg-white shadow-sm border-b">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -23,9 +24,23 @@
         <button id="nav-board" class="px-3 py-1.5 rounded-md hover:bg-gray-100"></button>
         <button id="nav-passenger" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</button>
         <button id="nav-driver" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</button>
+        <button id="btnSwitchRole" class="hidden px-3 py-1.5 rounded-md border text-sm">切换角色</button>
+
       </nav>
     </div>
   </header>
+  
+  <!-- 选择角色（登录后且未设置角色时显示） -->
+<section id="role-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+  <h3 class="text-lg font-semibold mb-2">选择你的角色</h3>
+  <p class="text-sm text-gray-500 mb-4">选择后将进入对应页面（可在资料页更改）。</p>
+  <div class="flex gap-3">
+    <button id="choose-passenger" class="px-5 py-2 rounded-md bg-blue-600 text-white">我是乘客</button>
+    <button id="choose-driver" class="px-5 py-2 rounded-md bg-green-600 text-white">我是司机</button>
+  </div>
+</section>
+
+  
 
   <!-- 环境状态条 -->
   <div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
@@ -690,7 +705,7 @@
     
     document.getElementById('passenger-filter').addEventListener('input', e => renderPassengersList(e.target.value.trim()));
     document.getElementById('btnPassengersRefresh').addEventListener('click', loadPassengersList);
-
+    
     document.getElementById('btnLogin').addEventListener('click', login);
     document.getElementById('btnRegister').addEventListener('click', register);
     document.getElementById('btnMagic').addEventListener('click', magicLink);
@@ -701,6 +716,13 @@
     document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
     document.getElementById('btnBoardRefresh').addEventListener('click', loadBoard);
     document.getElementById('board-filter').addEventListener('input', (e)=> renderBoard(e.target.value.trim()));
+    document.getElementById('choose-passenger')?.addEventListener('click', ()=> setUserRole('passenger'));
+    document.getElementById('choose-driver')?.addEventListener('click',    ()=> setUserRole('driver'));
+    document.getElementById('btnSwitchRole')?.addEventListener('click', ()=>{
+      // 允许已登录用户随时切换
+      document.getElementById('role-section').classList.remove('hidden');
+      ['passenger','driver'].forEach(id=>document.getElementById(id+'-section')?.classList.add('hidden'));
+    });
 
     // 会话恢复
     (async ()=>{
@@ -733,15 +755,19 @@
       document.getElementById('authBox').classList.toggle('hidden', authed);
       document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
       document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
+      document.getElementById('btnSwitchRole').classList.toggle('hidden', !authed);
     
-      // 任何人都先看到公告栏
-      showSection('board');
-      // 都加载一次公告数据（RLS 已放开读取）
-      loadBoard();
-    
-      // Realtime（如果你开启了并允许 anon 订阅，可以保留；否则保留也不会影响读取）
-      try { setupRealtime(); } catch (_) {}
+      if (authed) {
+        ensureUserRole();      // ✅ 登录后要求/应用角色
+      } else {
+        userRole = null;
+        updateNavForRole();
+        document.getElementById('role-section')?.classList.add('hidden');
+        // 未登录时你想默认展示什么随意（比如登录/资料）
+        showSection('profile');
+      }
     }
+
 
     // —— 分页缓存 —— 
 const listCache = { drivers: [], passengers: [] };
@@ -865,6 +891,61 @@ async function loadPassengersList(){
 
   listCache.passengers = data || [];
   renderPassengersList(document.getElementById('passenger-filter')?.value?.trim());
+}
+
+    // 当前用户角色（'passenger' | 'driver' | null）
+let userRole = null;
+
+// 读取资料（若不存在返回 null）
+async function fetchProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await sb
+    .from('user_profiles').select('*')
+    .eq('user_id', user.id).maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
+}
+
+// 设置/保存角色（写入 user_profiles.user_role）
+async function setUserRole(role) {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const { error } = await sb
+    .from('user_profiles')
+    .upsert({ user_id: user.id, user_role: role }, { onConflict: 'user_id' });
+  if (error) throw error;
+  userRole = role;
+  updateNavForRole();
+  // 进入对应页面并加载列表（这两个函数你之前已加过）
+  if (role === 'passenger') { showSection('passenger'); loadDriversList(); }
+  else                      { showSection('driver');    loadPassengersList(); }
+  document.getElementById('role-section').classList.add('hidden');
+}
+
+// 根据角色隐藏/显示导航
+function updateNavForRole() {
+  document.getElementById('nav-passenger')?.classList.toggle('hidden', userRole !== 'passenger');
+  document.getElementById('nav-driver')?.classList.toggle('hidden',    userRole !== 'driver');
+}
+
+// 登录后确保有角色：无则弹“选择角色”，有则直接进对应页
+async function ensureUserRole() {
+  const profile = await fetchProfile();
+  userRole = profile?.user_role || null;
+  updateNavForRole();
+
+  if (!userRole) {
+    // 只显示角色选择页
+    ['board','profile','passenger','driver'].forEach(id=>{
+      const el = document.getElementById(id+'-section'); if (el) el.classList.add('hidden');
+    });
+    document.getElementById('role-section').classList.remove('hidden');
+  } else {
+    document.getElementById('role-section')?.classList.add('hidden');
+    if (userRole === 'passenger') { showSection('passenger'); loadDriversList(); }
+    else                          { showSection('driver');    loadPassengersList(); }
+  }
 }
 
     
