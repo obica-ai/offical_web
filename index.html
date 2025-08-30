@@ -795,29 +795,31 @@ function renderDriversList(filterText=''){
     return s.includes(t);
   });
   wrap.innerHTML = rows.map(r=>{
-    const o = fmtAddr({
-      city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '',
-      street1: r.origin_street1 || '', street2: r.origin_street2 || ''
-    });
-    const d = fmtAddr({
-      city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '',
-      street1: r.destination_street1 || '', street2: r.destination_street2 || ''
-    });
-    const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
-    const price = (r.price_per_person && Number(r.price_per_person)>0) ? `${r.price_per_person}` : '—';
-    return card(`
-      <div>
-        <div class="flex items-center gap-2 mb-1">${badge('司机')} ${badge('可载 '+r.available_seats+' 人')}</div>
-        <div class="text-sm font-medium">出发：${o.line1}</div>
-        <div class="text-xs text-gray-500">${o.line2 || ''}</div>
-        <div class="text-sm mt-1">到达：${d.line1}</div>
-        <div class="text-xs text-gray-500">${d.line2 || ''}</div>
-        <div class="text-sm mt-1">时间：${dt}</div>
-        <div class="text-sm text-gray-600">价格/人：${price}</div>
-        ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+  const o = fmtAddr({ city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '', street1: r.origin_street1 || '', street2: r.origin_street2 || ''});
+  const d = fmtAddr({ city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '', street1: r.destination_street1 || '', street2: r.destination_street2 || ''});
+  const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+  const price = (r.price_per_person && Number(r.price_per_person)>0) ? `${r.price_per_person}` : '—';
+
+  const prof = r._profile || {};
+  const nameBadge = badge(maskName(prof.full_name));
+  const genderBadge = badge('性别 ' + genderLabel(prof.gender));
+
+  return card(`
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        ${badge('司机')} ${badge('可载 '+r.available_seats+' 人')} ${nameBadge} ${genderBadge}
       </div>
-    `);
-  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+      <div class="text-sm font-medium">出发：${o.line1}</div>
+      <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+      <div class="text-sm mt-1">到达：${d.line1}</div>
+      <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+      <div class="text-sm mt-1">时间：${dt}</div>
+      <div class="text-sm text-gray-600">价格/人：${price}</div>
+      ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+    </div>
+  `);
+}).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+
 }
 
 // 渲染：乘客需求（司机页用）
@@ -834,27 +836,29 @@ function renderPassengersList(filterText=''){
     return s.includes(t);
   });
   wrap.innerHTML = rows.map(r=>{
-    const o = fmtAddr({
-      city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '',
-      street1: r.origin_street1 || '', street2: r.origin_street2 || ''
-    });
-    const d = fmtAddr({
-      city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '',
-      street1: r.destination_street1 || '', street2: r.destination_street2 || ''
-    });
-    const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
-    return card(`
-      <div>
-        <div class="flex items-center gap-2 mb-1">${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')}</div>
-        <div class="text-sm font-medium">出发：${o.line1}</div>
-        <div class="text-xs text-gray-500">${o.line2 || ''}</div>
-        <div class="text-sm mt-1">到达：${d.line1}</div>
-        <div class="text-xs text-gray-500">${d.line2 || ''}</div>
-        <div class="text-sm mt-1">时间：${dt}</div>
-        ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+  const o = fmtAddr({ city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '', street1: r.origin_street1 || '', street2: r.origin_street2 || ''});
+  const d = fmtAddr({ city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '', street1: r.destination_street1 || '', street2: r.destination_street2 || ''});
+  const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+
+  const prof = r._profile || {};
+  const nameBadge = badge(maskName(prof.full_name));
+  const genderBadge = badge('性别 ' + genderLabel(prof.gender));
+
+  return card(`
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        ${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')} ${nameBadge} ${genderBadge}
       </div>
-    `);
-  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+      <div class="text-sm font-medium">出发：${o.line1}</div>
+      <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+      <div class="text-sm mt-1">到达：${d.line1}</div>
+      <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+      <div class="text-sm mt-1">时间：${dt}</div>
+      ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+    </div>
+  `);
+}).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+
 }
 
 // 载入：司机（给乘客页）
@@ -889,9 +893,13 @@ async function loadPassengersList(){
     .limit(50);
   if (error) { console.error(error); toast('加载乘客需求失败：'+error.message,'error'); return; }
 
-  listCache.passengers = data || [];
+  // ⭐ 拉取并合并公开资料
+  const profileMap = await fetchProfilesForUserIds((data||[]).map(r=>r.user_id));
+  listCache.passengers = (data || []).map(r => ({ ...r, _profile: profileMap[r.user_id] || null }));
+
   renderPassengersList(document.getElementById('passenger-filter')?.value?.trim());
 }
+
 
     // 当前用户角色（'passenger' | 'driver' | null）
 let userRole = null;
@@ -949,6 +957,50 @@ async function ensureUserRole() {
 }
 
     
+// 姓名脱敏：英文取“最后一个单词”，否则取第1个字符，然后加 **
+function maskName(name){
+  if(!name) return '匿名';
+  const s = String(name).trim();
+  if(!s) return '匿名';
+  const parts = s.split(/\s+/);
+  const base = parts.length > 1 ? parts[parts.length - 1] : s[0];
+  return base + '**';
+}
+function genderLabel(g){
+  return g === 'male' ? '男' : (g === 'female' ? '女' : '-');
+}
+
+// 批量拉取公开资料（优先用视图；失败再回退到 user_profiles）
+async function fetchProfilesForUserIds(ids){
+  const uniq = Array.from(new Set((ids || []).filter(Boolean)));
+  if(uniq.length === 0) return {};
+  // 先尝试视图
+  try{
+    const { data, error } = await sb
+      .from('profile_public')
+      .select('user_id, full_name, gender')
+      .in('user_id', uniq);
+    if (error) throw error;
+    const map = {};
+    (data || []).forEach(p => map[p.user_id] = p);
+    return map;
+  }catch(e){
+    // 回退到底表（需要对 user_profiles 授权 SELECT 才能成功）
+    try{
+      const { data, error } = await sb
+        .from('user_profiles')
+        .select('user_id, full_name, gender')
+        .in('user_id', uniq);
+      if (error) throw error;
+      const map = {};
+      (data || []).forEach(p => map[p.user_id] = p);
+      return map;
+    }catch(e2){
+      console.warn('fetchProfiles failed', e2);
+      return {};
+    }
+  }
+}
 
   </script>
 </body>
