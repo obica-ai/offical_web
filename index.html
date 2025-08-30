@@ -357,7 +357,36 @@
                 showMessage('请先登录', 'error');
                 return;
             }
-
+        // ① 先尝试保存/创建个人资料（从资料表单取值；没有表单也没关系，会传 null）
+              try {
+                const nameEl    = document.getElementById('profile-name');
+                const phoneEl   = document.getElementById('profile-phone');
+                const idEl      = document.getElementById('profile-id-number');
+                const genderEl  = document.getElementById('profile-gender');
+                const ageEl     = document.getElementById('profile-age');
+                const bioEl     = document.getElementById('profile-bio');
+            
+                const name     = nameEl?.value?.trim() || null;
+                const phone    = phoneEl?.value?.trim() || null;
+                const idNumber = idEl?.value?.trim() || null;
+                const gender   = genderEl?.value || null;
+                const age      = ageEl?.value ? parseInt(ageEl.value, 10) : null;
+                const bio      = bioEl?.value?.trim() || null;
+            
+                // ★ 关键：调用数据库函数，由后端用 auth.uid() 绑定到本人，无需传 user_id
+                const { error: profErr } = await supabaseClient.rpc('upsert_my_profile', {
+                  p_full_name: name,
+                  p_phone: phone,
+                  p_id_number: idNumber,
+                  p_gender: gender,
+                  p_age: age,
+                  p_bio: bio,
+                });
+                if (profErr) throw profErr;
+              } catch (e) {
+                showMessage('保存个人资料失败：' + e.message, 'error');
+                return; // 资料都保存不了，就先别发需求了
+              }
             const fromCity = document.getElementById('passenger-from').value.trim();
             const toCity = document.getElementById('passenger-to').value.trim();
             const date = document.getElementById('passenger-date').value;
@@ -398,7 +427,36 @@
                 showMessage('请先登录', 'error');
                 return;
             }
-
+            // ① 先尝试保存/创建个人资料（从资料表单取值；没有表单也没关系，会传 null）
+          try {
+            const nameEl    = document.getElementById('profile-name');
+            const phoneEl   = document.getElementById('profile-phone');
+            const idEl      = document.getElementById('profile-id-number');
+            const genderEl  = document.getElementById('profile-gender');
+            const ageEl     = document.getElementById('profile-age');
+            const bioEl     = document.getElementById('profile-bio');
+        
+            const name     = nameEl?.value?.trim() || null;
+            const phone    = phoneEl?.value?.trim() || null;
+            const idNumber = idEl?.value?.trim() || null;
+            const gender   = genderEl?.value || null;
+            const age      = ageEl?.value ? parseInt(ageEl.value, 10) : null;
+            const bio      = bioEl?.value?.trim() || null;
+        
+            // ★ 关键：调用数据库函数，由后端用 auth.uid() 绑定到本人，无需传 user_id
+            const { error: profErr } = await supabaseClient.rpc('upsert_my_profile', {
+              p_full_name: name,
+              p_phone: phone,
+              p_id_number: idNumber,
+              p_gender: gender,
+              p_age: age,
+              p_bio: bio,
+            });
+            if (profErr) throw profErr;
+          } catch (e) {
+            showMessage('保存个人资料失败：' + e.message, 'error');
+            return; // 资料都保存不了，就先别发需求了
+          }
             const fromCity = document.getElementById('driver-from').value.trim();
             const toCity = document.getElementById('driver-to').value.trim();
             const date = document.getElementById('driver-date').value;
