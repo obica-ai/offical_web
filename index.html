@@ -661,43 +661,60 @@
       }catch(e){ toast('登录失败：'+(e.message||'Bad Request'),'error'); }
       finally{ btn.disabled=false; btn.textContent='登录'; }
     }
-    async function register(){
-      const email = document.getElementById('authEmail').value.trim();
-      const pass  = document.getElementById('authPass').value.trim();
-      if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
-      const btn = document.getElementById('btnRegister'); btn.disabled=true; btn.textContent='注册中…';
-      try{
-        const { data, error } = await sb.auth.signUp({ email, password: pass });
-        if(error) throw error;
-        if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
-        else toast('注册成功！','success');
-      }catch(e){ toast('注册失败：'+(e.message||'Database error'),'error'); }
-      finally{ btn.disabled=false; btn.textContent='注册'; }
-    }
 
     
-    async function magicLink(){
-      const email = document.getElementById('authEmail').value.trim();
-      if(!email){ toast('请输入邮箱','error'); return; }
-      const btn = document.getElementById('btnMagic'); btn.disabled=true; btn.textContent='发送中…';
-    
-      try{
-        // 建议顺手保存，verified.html 可用于预填/重发
-        localStorage.setItem('lastEmail', email);
-    
-        await sb.auth.signInWithOtp({
-          email,
-          // ✅ 这里指定回调页（你部署在 /travel_web/）
-          options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
-        });
-    
-        toast('已发送登录链接，请查收邮箱','success');
-      }catch(e){
-        toast('发送失败：'+(e.message||'配置错误'),'error');
-      }finally{
-        btn.disabled=false; btn.textContent='发登录链接';
-      }
+    // 2) 注册（可选，但推荐同样存一下）
+async function register(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value.trim();
+  if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
+  const btn = document.getElementById('btnRegister'); btn.disabled = true; btn.textContent = '注册中…';
+
+  try{
+    // ✅ 同样在请求前存一下
+    try { localStorage.setItem('lastEmail', email); } catch(_) {}
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pass,
+      options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+    });
+    if(error) throw error;
+
+    if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
+    else toast('注册成功！','success');
+  } catch(e) {
+    toast('注册失败：'+(e.message||'Database error'),'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '注册';
+  }
 }
+
+
+    
+    // 1) 发送登录链接（Magic Link）
+      async function magicLink(){
+        const email = document.getElementById('authEmail').value.trim();
+        if(!email){ toast('请输入邮箱','error'); return; }
+        const btn = document.getElementById('btnMagic'); btn.disabled = true; btn.textContent = '发送中…';
+      
+        try{
+          // ✅ 就放这里：在真正发请求之前
+          try { localStorage.setItem('lastEmail', email); } catch(_) {}
+      
+          await sb.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+          });
+      
+          toast('已发送登录链接，请查收邮箱','success');
+        } catch(e) {
+          toast('发送失败：'+(e.message||'配置错误'),'error');
+        } finally {
+          btn.disabled = false; btn.textContent = '发登录链接';
+        }
+      }
+
 
     async function signOut(){
       await sb.auth.signOut(); toast('已退出','success');
