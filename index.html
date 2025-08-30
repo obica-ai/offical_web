@@ -235,7 +235,14 @@
                 showMessage('初始化失败，请检查配置', 'error');
             }
         }
-
+        
+        window.showSection = function(sectionName) {
+            const ids = ['passenger-section','driver-section','profile-section'];
+            ids.forEach(id => document.getElementById(id)?.classList.add('hidden'));
+            const el = document.getElementById(sectionName + '-section');
+            if (el) { el.classList.remove('hidden'); el.classList.add('fade-in'); }
+            };
+        
         function setupEventListeners() {
             try {
                 // Check if elements exist before adding listeners
