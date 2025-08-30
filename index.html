@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>城际同行平台 · 乘客&司机</title>
-  <meta name="description" content="一个面向两类用户（乘客/司机）的简易原型：司机发布班次、乘客按城市与日期筛选并下单。纯前端可直接部署。" />
+  <title>城际同行平台 · 乘客&司机（云端版）</title>
+  <meta name="description" content="两类用户（乘客/司机）使用同一平台：乘客发布需求，司机发布空闲班次。使用 Supabase（Postgres+Auth+RLS）作为后端数据库。" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     .fade-in { animation: fadeIn .5s ease both; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
-    .chip{ @apply inline-flex items-center rounded-full border px-2 py-0.5 text-xs; }
-    input, select, textarea{ @apply rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black; }
-    label{ @apply text-sm font-medium; }
+    input, select, textarea{ border-radius: 0.75rem; border:1px solid #cbd5e1; padding: .5rem .75rem; outline: none; }
+    input:focus, select:focus, textarea:focus{ box-shadow: 0 0 0 2px #000; }
+    label{ font-size: .9rem; font-weight: 600; }
   </style>
 </head>
 <body class="antialiased text-slate-800 bg-slate-50 min-h-screen">
@@ -31,160 +32,141 @@
     </div>
   </header>
 
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-    <div class="grid lg:grid-cols-3 gap-8">
-      <!-- 左侧：搜索/发布面板 -->
-      <section class="lg:col-span-2 space-y-8">
-        <!-- 乘客面板 -->
-        <div id="passenger" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
-          <div class="flex items-center justify-between gap-4">
-            <h2 class="text-xl font-bold">乘客 · 查找与预约</h2>
-            <span class="chip border-slate-300">MVP 原型</span>
-          </div>
-          <p class="mt-1 text-sm text-slate-600">按<strong>出发城市</strong>、<strong>到达城市</strong>和<strong>日期</strong>筛选司机班次；支持 seats≥需求 的匹配。</p>
-          <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label>出发城市</label>
-              <input id="p_from" placeholder="例如：上海" />
-            </div>
-            <div>
-              <label>到达城市</label>
-              <input id="p_to" placeholder="例如：杭州" />
-            </div>
-            <div>
-              <label>日期</label>
-              <input id="p_date" type="date" />
-            </div>
-            <div>
-              <label>需要座位数</label>
-              <input id="p_seats" type="number" min="1" value="1" />
-            </div>
-            <div class="sm:col-span-2 lg:col-span-1 flex items-end">
-              <button id="btnSearch" class="w-full rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">搜索班次</button>
-            </div>
-          </div>
-
-          <div class="mt-6">
-            <h3 class="font-semibold">可预约班次</h3>
-            <div id="searchResults" class="mt-3 grid gap-3"></div>
-          </div>
-
-          <dialog id="bookDialog" class="rounded-2xl p-0 w-[min(580px,90vw)]">
-            <form method="dialog" class="rounded-2xl bg-white border border-slate-200 shadow-lg overflow-hidden">
-              <div class="px-6 py-4 border-b flex items-center justify-between">
-                <h4 class="font-semibold">提交预约请求</h4>
-                <button class="px-2 py-1" value="close">✕</button>
-              </div>
-              <div class="p-6 grid sm:grid-cols-2 gap-4">
-                <div class="sm:col-span-2 text-sm text-slate-600" id="bookInfo"></div>
-                <div>
-                  <label>你的姓名</label>
-                  <input id="b_name" required placeholder="张三" />
-                </div>
-                <div>
-                  <label>联系方式（电话/微信/邮箱）</label>
-                  <input id="b_contact" required placeholder="手机号或微信号" />
-                </div>
-                <div class="sm:col-span-2">
-                  <label>备注</label>
-                  <textarea id="b_note" rows="3" placeholder="如携带行李、婴儿座椅等"></textarea>
-                </div>
-              </div>
-              <div class="px-6 py-4 border-t flex items-center justify-end gap-3 bg-slate-50">
-                <button class="rounded-xl border border-slate-300 px-4 py-2 text-sm" value="cancel">取消</button>
-                <button id="btnSubmitBooking" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold" value="default">提交</button>
-              </div>
-            </form>
-          </dialog>
-        </div>
-
-        <!-- 司机面板 -->
-        <div id="driver" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
-          <h2 class="text-xl font-bold">司机 · 发布班次与查看请求</h2>
-          <p class="mt-1 text-sm text-slate-600">添加/管理你的行程；乘客的预约请求会出现在下方“收到的请求”。</p>
-
-          <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label>司机姓名</label>
-              <input id="d_name" placeholder="李四" />
-            </div>
-            <div>
-              <label>联系方式（仅对预约乘客可见）</label>
-              <input id="d_contact" placeholder="手机号或微信号" />
-            </div>
-            <div>
-              <label>出发城市</label>
-              <input id="d_from" placeholder="例如：上海" />
-            </div>
-            <div>
-              <label>到达城市</label>
-              <input id="d_to" placeholder="例如：杭州" />
-            </div>
-            <div>
-              <label>日期</label>
-              <input id="d_date" type="date" />
-            </div>
-            <div>
-              <label>出发时间</label>
-              <input id="d_time" type="time" />
-            </div>
-            <div>
-              <label>可用座位</label>
-              <input id="d_seats" type="number" min="1" value="3" />
-            </div>
-            <div>
-              <label>备注</label>
-              <input id="d_note" placeholder="如上门接送/中途站点等" />
-            </div>
-            <div class="sm:col-span-2 lg:col-span-4 flex items-end justify-end">
-              <button id="btnAddSchedule" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">+ 发布班次</button>
-            </div>
-          </div>
-
-          <div class="mt-6">
-            <h3 class="font-semibold">我的班次</h3>
-            <div id="driverSchedules" class="mt-3 grid gap-3"></div>
-          </div>
-
-          <div class="mt-6">
-            <h3 class="font-semibold">收到的预约请求</h3>
-            <div id="driverRequests" class="mt-3 grid gap-3"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 右侧：说明/状态 -->
-      <aside id="how" class="space-y-4">
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">平台说明（MVP）</h3>
-          <ul class="mt-2 text-sm text-slate-600 list-disc list-inside space-y-1">
-            <li>这是前端原型：数据保存在浏览器 <code>localStorage</code>；刷新不丢失但不共享。</li>
-            <li>乘客按城市/日期/座位筛选；提交预约后，司机会在“收到的预约请求”看到信息。</li>
-            <li>要上线真实服务：建议接入账号系统、后端数据库（如 Supabase/Firebase）、短信/微信通知。</li>
-          </ul>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-          <h3 class="font-semibold">下一步可做</h3>
-          <ol class="mt-2 text-sm text-slate-600 list-decimal list-inside space-y-1">
-            <li>城市字段改为选择器并做常用城市预设；增加价格/拼车规则。</li>
-            <li>支持往返与循环日程（每周 X/周末等）。</li>
-            <li>加入账号与司机认证、评价体系、取消/改签流程。</li>
-            <li>加入支付与托管（如 Stripe/微信支付）与风控。</li>
-          </ol>
-        </div>
-        <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm text-sm text-slate-600">
-          <p class="mb-2 font-semibold">数据调试</p>
-          <div class="flex gap-2">
-            <button id="btnSeed" class="rounded-xl border border-slate-300 px-3 py-1">生成示例数据</button>
-            <button id="btnClear" class="rounded-xl border border-slate-300 px-3 py-1">清空本地数据</button>
-          </div>
-          <p class="mt-2 text-xs">仅影响本浏览器，不会上传。</p>
-        </div>
-      </aside>
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Auth -->
+  <section class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm mb-8">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h2 class="text-lg font-bold">登录 / 注册</h2>
+        <p class="text-sm text-slate-600">使用邮箱一键登录（Magic Link）。登录后可发布与管理你的数据。</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="authStatus" class="text-sm text-slate-600">未登录</span>
+        <button id="btnSignOut" class="hidden rounded-xl border border-slate-300 px-3 py-1.5 text-sm">退出</button>
+      </div>
     </div>
-  </main>
+    <div id="authBox" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2">
+      <input id="authEmail" type="email" placeholder="you@example.com" />
+      <button id="btnMagic" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">发送登录链接</button>
+    </div>
+    <p class="text-xs text-slate-500 mt-2">* 第一次登录会自动创建账号；邮箱里点击 Magic Link 即可返回本页登录。</p>
+  </section>
 
-  <footer class="border-t border-slate-200">
+  <div class="grid lg:grid-cols-3 gap-8">
+    <!-- 左：乘客需求 -->
+    <section class="lg:col-span-2 space-y-8">
+      <div id="passenger" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
+        <h2 class="text-xl font-bold">乘客 · 发布需求 & 搜索司机</h2>
+        <p class="mt-1 text-sm text-slate-600">发布你的出行需求（出发/到达/日期/座位），也可按条件搜索司机空闲班次。</p>
+
+        <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label>出发城市</label>
+            <input id="need_from" placeholder="上海" />
+          </div>
+          <div>
+            <label>到达城市</label>
+            <input id="need_to" placeholder="杭州" />
+          </div>
+          <div>
+            <label>日期</label>
+            <input id="need_date" type="date" />
+          </div>
+          <div>
+            <label>需要座位</label>
+            <input id="need_seats" type="number" min="1" value="1" />
+          </div>
+          <div class="lg:col-span-4">
+            <label>备注</label>
+            <input id="need_note" placeholder="行李/上车点/时间弹性等" />
+          </div>
+          <div class="sm:col-span-2 lg:col-span-4 flex items-end justify-end gap-2">
+            <button id="btnAddNeed" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">+ 发布需求</button>
+            <button id="btnSearchSlots" class="rounded-xl border border-slate-300 px-4 py-2 text-sm">按条件搜索司机班次</button>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <h3 class="font-semibold">符合条件的司机班次</h3>
+          <div id="slotResults" class="mt-3 grid gap-3"></div>
+        </div>
+
+        <div class="mt-6">
+          <h3 class="font-semibold">我发布的乘客需求</h3>
+          <div id="myNeeds" class="mt-3 grid gap-3"></div>
+        </div>
+      </div>
+
+      <!-- 司机面板 -->
+      <div id="driver" class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm fade-in">
+        <h2 class="text-xl font-bold">司机 · 发布空闲班次</h2>
+        <p class="mt-1 text-sm text-slate-600">填写你的行程（出发/到达/日期/时间/座位/备注），供乘客搜索预约。</p>
+
+        <div class="mt-4 grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div>
+            <label>出发城市</label>
+            <input id="slot_from" placeholder="上海" />
+          </div>
+          <div>
+            <label>到达城市</label>
+            <input id="slot_to" placeholder="杭州" />
+          </div>
+          <div>
+            <label>日期</label>
+            <input id="slot_date" type="date" />
+          </div>
+          <div>
+            <label>时间</label>
+            <input id="slot_time" type="time" />
+          </div>
+          <div>
+            <label>可用座位</label>
+            <input id="slot_seats" type="number" min="1" value="3" />
+          </div>
+          <div>
+            <label>备注</label>
+            <input id="slot_note" placeholder="上门接/中途站点等" />
+          </div>
+          <div class="sm:col-span-2 lg:col-span-6 flex items-end justify-end">
+            <button id="btnAddSlot" class="rounded-xl bg-black text-white px-4 py-2 text-sm font-semibold">+ 发布空闲班次</button>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <h3 class="font-semibold">我发布的司机班次</h3>
+          <div id="mySlots" class="mt-3 grid gap-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右：说明/状态 -->
+    <aside class="space-y-4">
+      <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+        <h3 class="font-semibold">后端：Supabase</h3>
+        <ul class="mt-2 text-sm text-slate-600 list-disc list-inside space-y-1">
+          <li>Auth：邮箱 Magic Link</li>
+          <li>DB：Postgres（RLS 行级权限）</li>
+          <li>前端：supabase-js v2 直接调用</li>
+        </ul>
+      </div>
+      <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm text-sm text-slate-600">
+        <p class="mb-2 font-semibold">环境变量（请替换）</p>
+        <code id="envPreview" class="text-xs break-all">SUPABASE_URL=（你的项目URL）
+SUPABASE_ANON_KEY=（你的匿名Key）</code>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<footer class="border-t border-slate-200">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <p>© <span id="year"></span> 城际同行</p>
+    <div class="flex items-center gap-4">
+      <a class="hover:text-black" href="#">隐私政策（示例）</a>
+      <a class="hover:text-black" href="#">使用条款（示例）</a>
+    </div>
+  </div>
+</footer> class="border-t border-slate-200">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
       <p>© <span id="year"></span> 城际同行</p>
       <div class="flex items-center gap-4">
@@ -194,269 +176,165 @@
     </div>
   </footer>
 
-  <template id="tplScheduleCard">
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="flex items-center justify-between gap-3">
-        <div class="text-sm">
-          <div class="font-semibold"><span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span></div>
-          <div class="text-slate-600 mt-1">司机：<span data-driver></span> · 座位：<span data-seats></span> · <span data-note></span></div>
-        </div>
-        <div class="flex items-center gap-2">
-          <button data-book class="rounded-xl bg-black text-white px-3 py-1.5 text-xs font-semibold">预约</button>
-        </div>
+  <template id="tplCard">
+  <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="text-sm flex items-center justify-between gap-3">
+      <div>
+        <div class="font-semibold"><span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span></div>
+        <div class="text-slate-600 mt-1">座位：<span data-seats></span> · <span data-note></span></div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-del class="hidden rounded-lg border border-slate-300 px-2 py-1 text-xs">删除</button>
       </div>
     </div>
-  </template>
+  </div>
+</template>
 
-  <template id="tplDriverScheduleRow">
-    <div class="rounded-xl border border-slate-200 bg-white p-3">
-      <div class="text-sm flex flex-wrap gap-x-3 gap-y-1 items-center justify-between">
-        <div><span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span> · 座位 <span data-seats></span> · <span data-note></span></div>
-        <div class="flex items-center gap-2">
-          <button data-del class="rounded-lg border border-slate-300 px-2 py-1 text-xs">删除</button>
-        </div>
-      </div>
-    </div>
-  </template>
+<script>
+// ======= Supabase 初始化 =======
+const SUPABASE_URL = window.SUPABASE_URL || 'https://ddycdlhhgezffmybssvw.supabase.co'; // ← 替换
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWNkbGhoZ2V6ZmZteWJzc3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NDA4MzAsImV4cCI6MjA3MjExNjgzMH0.JAU94T7uUZQCvuXtaZbMc3VXTAKQyprTX0H62AGOtyo'; // ← 替换
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  <template id="tplRequestCard">
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="text-sm">
-        <div class="font-semibold">来自 <span data-name></span> 的预约请求</div>
-        <div class="text-slate-600 mt-1">联系方式：<span data-contact></span></div>
-        <div class="text-slate-600">班次：<span data-from></span> → <span data-to></span> · <span data-date></span> <span data-time></span></div>
-        <div class="text-slate-600">备注：<span data-note></span></div>
-      </div>
-    </div>
-  </template>
+// 年份与环境预览
+document.getElementById('year').textContent = new Date().getFullYear();
+document.getElementById('envPreview').textContent = `SUPABASE_URL=${SUPABASE_URL}
+SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY.slice(0,8)}...`;
 
-  <script>
-  // ---- 简易数据层（localStorage） ----
-  const LS_KEYS = { drivers: 'cj_drivers', schedules: 'cj_schedules', requests: 'cj_requests' };
-  const readLS = (k) => JSON.parse(localStorage.getItem(k) || '[]');
-  const writeLS = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+// 元素引用
+const el = (id)=>document.getElementById(id);
+const ui = {
+  authStatus: el('authStatus'), authBox: el('authBox'), btnSignOut: el('btnSignOut'), btnMagic: el('btnMagic'), authEmail: el('authEmail'),
+  // passenger need
+  need_from: el('need_from'), need_to: el('need_to'), need_date: el('need_date'), need_seats: el('need_seats'), need_note: el('need_note'),
+  btnAddNeed: el('btnAddNeed'), myNeeds: el('myNeeds'), btnSearchSlots: el('btnSearchSlots'), slotResults: el('slotResults'),
+  // driver slots
+  slot_from: el('slot_from'), slot_to: el('slot_to'), slot_date: el('slot_date'), slot_time: el('slot_time'), slot_seats: el('slot_seats'), slot_note: el('slot_note'),
+  btnAddSlot: el('btnAddSlot'), mySlots: el('mySlots'),
+  tplCard: document.getElementById('tplCard'),
+};
 
-  function uid(){ return Math.random().toString(36).slice(2,10); }
+// 简易状态
+let currentUser = null;
 
-  // 年份
-  document.getElementById('year').textContent = new Date().getFullYear();
+function requireLogin(){ if(!currentUser){ alert('请先登录 / 注册'); return false;} return true; }
 
-  // 元素引用
-  const els = {
-    p_from: document.getElementById('p_from'),
-    p_to: document.getElementById('p_to'),
-    p_date: document.getElementById('p_date'),
-    p_seats: document.getElementById('p_seats'),
-    btnSearch: document.getElementById('btnSearch'),
-    searchResults: document.getElementById('searchResults'),
+// 登录：Magic Link
+ui.btnMagic.addEventListener('click', async ()=>{
+  const email = ui.authEmail.value.trim();
+  if(!email) return alert('请输入邮箱');
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href }});
+  if(error) return alert('发送失败：'+error.message);
+  alert('已发送登录链接到邮箱，请查收并点击登录。');
+});
 
-    d_name: document.getElementById('d_name'),
-    d_contact: document.getElementById('d_contact'),
-    d_from: document.getElementById('d_from'),
-    d_to: document.getElementById('d_to'),
-    d_date: document.getElementById('d_date'),
-    d_time: document.getElementById('d_time'),
-    d_seats: document.getElementById('d_seats'),
-    d_note: document.getElementById('d_note'),
-    btnAddSchedule: document.getElementById('btnAddSchedule'),
-    driverSchedules: document.getElementById('driverSchedules'),
-    driverRequests: document.getElementById('driverRequests'),
+ui.btnSignOut.addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+});
 
-    btnSeed: document.getElementById('btnSeed'),
-    btnClear: document.getElementById('btnClear'),
+sb.auth.onAuthStateChange(async (_event, session) => {
+  currentUser = session?.user || null;
+  ui.authStatus.textContent = currentUser ? `已登录：${currentUser.email}` : '未登录';
+  ui.btnSignOut.classList.toggle('hidden', !currentUser);
+  ui.authBox.classList.toggle('hidden', !!currentUser);
+  if(currentUser){ loadMyNeeds(); loadMySlots(); }
+});
 
-    tplScheduleCard: document.getElementById('tplScheduleCard'),
-    tplDriverScheduleRow: document.getElementById('tplDriverScheduleRow'),
-    tplRequestCard: document.getElementById('tplRequestCard'),
+// ======= 乘客需求 CRUD =======
+async function loadMyNeeds(){
+  const { data, error } = await sb.from('passenger_needs').select('*').order('created_at', { ascending:false });
+  if(error) return console.error(error);
+  renderList(ui.myNeeds, data, true, async (id)=>{
+    await sb.from('passenger_needs').delete().eq('id', id); loadMyNeeds();
+  });
+}
 
-    bookDialog: document.getElementById('bookDialog'),
-    bookInfo: document.getElementById('bookInfo'),
-    b_name: document.getElementById('b_name'),
-    b_contact: document.getElementById('b_contact'),
-    b_note: document.getElementById('b_note'),
-    btnSubmitBooking: document.getElementById('btnSubmitBooking'),
+ui.btnAddNeed.addEventListener('click', async ()=>{
+  if(!requireLogin()) return;
+  const row = {
+    from_city: ui.need_from.value.trim(),
+    to_city: ui.need_to.value.trim(),
+    date: ui.need_date.value,
+    seats: parseInt(ui.need_seats.value||'1',10),
+    note: ui.need_note.value.trim(),
   };
+  if(!row.from_city || !row.to_city || !row.date || !row.seats) return alert('请完整填写需求');
+  const { error } = await sb.from('passenger_needs').insert(row);
+  if(error) return alert('发布失败：'+error.message);
+  ui.need_note.value='';
+  await loadMyNeeds();
+});
 
-  // 当前司机临时身份（基于名字+联系信息）
-  function currentDriverId(){
-    const name = els.d_name.value.trim();
-    const contact = els.d_contact.value.trim();
-    if(!name || !contact) return null;
-    const key = `${name}__${contact}`;
-    let drivers = readLS(LS_KEYS.drivers);
-    let found = drivers.find(d => d.key === key);
-    if(!found){
-      found = { id: uid(), key, name, contact };
-      drivers.push(found); writeLS(LS_KEYS.drivers, drivers);
+ui.btnSearchSlots.addEventListener('click', async ()=>{
+  const from = ui.need_from.value.trim();
+  const to = ui.need_to.value.trim();
+  const date = ui.need_date.value;
+  const seats = parseInt(ui.need_seats.value||'1',10);
+  let query = sb.from('driver_slots').select('*').gte('seats', seats);
+  if(from) query = query.ilike('from_city', `%${from}%`);
+  if(to) query = query.ilike('to_city', `%${to}%`);
+  if(date) query = query.eq('date', date);
+  const { data, error } = await query.order('date').order('time');
+  if(error) return alert('搜索失败：'+error.message);
+  renderList(ui.slotResults, data, false);
+});
+
+// ======= 司机空闲班次 CRUD =======
+async function loadMySlots(){
+  const { data, error } = await sb.from('driver_slots').select('*').order('date').order('time');
+  if(error) return console.error(error);
+  renderList(ui.mySlots, data, true, async (id)=>{
+    await sb.from('driver_slots').delete().eq('id', id); loadMySlots();
+  });
+}
+
+ui.btnAddSlot.addEventListener('click', async ()=>{
+  if(!requireLogin()) return;
+  const row = {
+    from_city: ui.slot_from.value.trim(),
+    to_city: ui.slot_to.value.trim(),
+    date: ui.slot_date.value,
+    time: ui.slot_time.value,
+    seats: parseInt(ui.slot_seats.value||'1',10),
+    note: ui.slot_note.value.trim(),
+  };
+  if(!row.from_city || !row.to_city || !row.date || !row.time || !row.seats) return alert('请完整填写班次');
+  const { error } = await sb.from('driver_slots').insert(row);
+  if(error) return alert('发布失败：'+error.message);
+  ui.slot_note.value='';
+  await loadMySlots();
+});
+
+// ======= 通用渲染 =======
+function renderList(container, rows, mine=false, onDel){
+  container.innerHTML='';
+  if(!rows || rows.length===0){ container.innerHTML='<div class="text-sm text-slate-600">暂无数据</div>'; return; }
+  rows.forEach(r=>{
+    const node = ui.tplCard.content.firstElementChild.cloneNode(true);
+    node.querySelector('[data-from]').textContent = r.from_city;
+    node.querySelector('[data-to]').textContent = r.to_city;
+    node.querySelector('[data-date]').textContent = r.date || '';
+    node.querySelector('[data-time]').textContent = r.time || '';
+    node.querySelector('[data-seats]').textContent = r.seats ?? '-';
+    node.querySelector('[data-note]').textContent = r.note || '';
+    if(mine){
+      const btnDel = node.querySelector('[data-del]');
+      btnDel.classList.remove('hidden');
+      btnDel.addEventListener('click', ()=> onDel && onDel(r.id));
     }
-    return found.id;
-  }
-
-  // 添加班次
-  els.btnAddSchedule.addEventListener('click', () => {
-    const did = currentDriverId();
-    if(!did){ alert('请先填写“司机姓名”和“联系方式”。'); return; }
-    const from = els.d_from.value.trim();
-    const to = els.d_to.value.trim();
-    const date = els.d_date.value;
-    const time = els.d_time.value;
-    const seats = parseInt(els.d_seats.value||'0',10);
-    const note = els.d_note.value.trim();
-    if(!from || !to || !date || !time || !seats){ alert('请完整填写出发/到达/日期/时间/座位。'); return; }
-    const schedules = readLS(LS_KEYS.schedules);
-    schedules.push({ id: uid(), driverId: did, from, to, date, time, seats, note });
-    writeLS(LS_KEYS.schedules, schedules);
-    renderDriverSchedules();
-    alert('已发布班次');
+    container.appendChild(node);
   });
+}
 
-  // 渲染司机的班次
-  function renderDriverSchedules(){
-    const did = currentDriverId();
-    const list = readLS(LS_KEYS.schedules).filter(s => s.driverId === did);
-    els.driverSchedules.innerHTML = '';
-    list.forEach(s => {
-      const node = els.tplDriverScheduleRow.content.firstElementChild.cloneNode(true);
-      node.querySelector('[data-from]').textContent = s.from;
-      node.querySelector('[data-to]').textContent = s.to;
-      node.querySelector('[data-date]').textContent = s.date;
-      node.querySelector('[data-time]').textContent = s.time;
-      node.querySelector('[data-seats]').textContent = s.seats;
-      node.querySelector('[data-note]').textContent = s.note||'';
-      node.querySelector('[data-del]').addEventListener('click', () => {
-        const schedules = readLS(LS_KEYS.schedules).filter(x => x.id !== s.id);
-        writeLS(LS_KEYS.schedules, schedules);
-        renderDriverSchedules(); renderDriverRequests();
-      });
-      els.driverSchedules.appendChild(node);
-    });
-  }
-
-  // 搜索班次
-  els.btnSearch.addEventListener('click', () => {
-    const from = els.p_from.value.trim();
-    const to = els.p_to.value.trim();
-    const date = els.p_date.value;
-    const need = parseInt(els.p_seats.value||'1',10);
-    const schedules = readLS(LS_KEYS.schedules).filter(s =>
-      (!from || s.from.includes(from)) &&
-      (!to || s.to.includes(to)) &&
-      (!date || s.date === date) &&
-      (s.seats >= need)
-    );
-    renderSearch(schedules);
-  });
-
-  function driverInfo(driverId){
-    return readLS(LS_KEYS.drivers).find(d => d.id === driverId) || {name:'未命名司机', contact:''};
-  }
-
-  // 渲染搜索结果
-  function renderSearch(list){
-    els.searchResults.innerHTML = '';
-    if(list.length === 0){
-      els.searchResults.innerHTML = '<div class="text-sm text-slate-600">未找到匹配的班次。</div>';
-      return;
-    }
-    list.forEach(s => {
-      const node = els.tplScheduleCard.content.firstElementChild.cloneNode(true);
-      node.querySelector('[data-from]').textContent = s.from;
-      node.querySelector('[data-to]').textContent = s.to;
-      node.querySelector('[data-date]').textContent = s.date;
-      node.querySelector('[data-time]').textContent = s.time;
-      node.querySelector('[data-seats]').textContent = s.seats;
-      node.querySelector('[data-note]').textContent = s.note||'';
-      node.querySelector('[data-driver]').textContent = driverInfo(s.driverId).name;
-      node.querySelector('[data-book]').addEventListener('click', () => openBooking(s));
-      els.searchResults.appendChild(node);
-    });
-  }
-
-  let bookingTarget = null;
-  function openBooking(s){
-    bookingTarget = s;
-    els.bookInfo.textContent = `${s.from} → ${s.to} · ${s.date} ${s.time} · 座位 ${s.seats}`;
-    els.bookDialog.showModal();
-  }
-
-  // 提交预约
-  els.btnSubmitBooking.addEventListener('click', (e) => {
-    e.preventDefault();
-    if(!bookingTarget) return;
-    const name = els.b_name.value.trim();
-    const contact = els.b_contact.value.trim();
-    const note = els.b_note.value.trim();
-    if(!name || !contact){ alert('请填写姓名与联系方式'); return; }
-    const requests = readLS(LS_KEYS.requests);
-    requests.push({ id: uid(), scheduleId: bookingTarget.id, name, contact, note, ts: Date.now() });
-    writeLS(LS_KEYS.requests, requests);
-    els.bookDialog.close();
-    els.b_name.value = els.b_contact.value = els.b_note.value = '';
-    alert('已提交预约请求，司机将看到你的联系方式。');
-    renderDriverRequests();
-  });
-
-  // 渲染收到的请求（基于当前司机）
-  function renderDriverRequests(){
-    const did = currentDriverId();
-    const mySchedules = readLS(LS_KEYS.schedules).filter(s => s.driverId === did);
-    const myIds = new Set(mySchedules.map(s => s.id));
-    const reqs = readLS(LS_KEYS.requests).filter(r => myIds.has(r.scheduleId));
-    els.driverRequests.innerHTML = '';
-    reqs.sort((a,b)=>b.ts-a.ts).forEach(r => {
-      const s = mySchedules.find(x => x.id === r.scheduleId) || {};
-      const node = els.tplRequestCard.content.firstElementChild.cloneNode(true);
-      node.querySelector('[data-name]').textContent = r.name;
-      node.querySelector('[data-contact]').textContent = r.contact;
-      node.querySelector('[data-from]').textContent = s.from||'';
-      node.querySelector('[data-to]').textContent = s.to||'';
-      node.querySelector('[data-date]').textContent = s.date||'';
-      node.querySelector('[data-time]').textContent = s.time||'';
-      node.querySelector('[data-note]').textContent = r.note||'';
-      els.driverRequests.appendChild(node);
-    });
-  }
-
-  // 示例数据
-  els.btnSeed.addEventListener('click', () => {
-    const drivers = [
-      { id: uid(), key: '王师傅__13800000001', name: '王师傅', contact: '13800000001' },
-      { id: uid(), key: 'Lena__wechat:lena888', name: 'Lena', contact: 'wechat:lena888' },
-    ];
-    const today = new Date();
-    const fmt = (d)=> d.toISOString().slice(0,10);
-    const d1 = new Date(today.getTime()+24*3600*1000);
-    const d2 = new Date(today.getTime()+2*24*3600*1000);
-    const schedules = [
-      { id: uid(), driverId: drivers[0].id, from: '上海', to: '杭州', date: fmt(d1), time: '08:30', seats: 3, note: '虹桥高铁站出发' },
-      { id: uid(), driverId: drivers[0].id, from: '杭州', to: '上海', date: fmt(d2), time: '18:00', seats: 2, note: '萧山机场可顺路' },
-      { id: uid(), driverId: drivers[1].id, from: '苏州', to: '上海', date: fmt(d1), time: '07:45', seats: 4, note: '允许携带小宠物' },
-    ];
-    writeLS(LS_KEYS.drivers, drivers);
-    writeLS(LS_KEYS.schedules, schedules);
-    writeLS(LS_KEYS.requests, []);
-    alert('已写入示例数据');
-  });
-
-  // 清空
-  els.btnClear.addEventListener('click', () => {
-    Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
-    alert('已清空本地数据');
-    renderDriverSchedules();
-    renderDriverRequests();
-    els.searchResults.innerHTML = '';
-  });
-
-  // 当司机输入身份变化时，重新渲染其班次和请求
-  ['d_name','d_contact'].forEach(id => {
-    els[id].addEventListener('input', () => { renderDriverSchedules(); renderDriverRequests(); });
-  });
-
-  // 初始化日期默认值（今天）
-  const todayStr = new Date().toISOString().slice(0,10);
-  els.p_date.value = todayStr;
-  els.d_date.value = todayStr;
-
-  </script>
+// 初始化：如果通过重定向回到本页，supabase 会自动恢复会话
+(async ()=>{
+  const { data:{ session } } = await sb.auth.getSession();
+  currentUser = session?.user || null;
+  ui.authStatus.textContent = currentUser ? `已登录：${currentUser.email}` : '未登录';
+  ui.btnSignOut.classList.toggle('hidden', !currentUser);
+  ui.authBox.classList.toggle('hidden', !!currentUser);
+  if(currentUser){ loadMyNeeds(); loadMySlots(); }
+})();
+</script>
 </body>
 </html>
