@@ -222,6 +222,13 @@ SUPABASE_ANON_KEY=（你的匿名Key）</code>
 </template>
 
 <script>
+// Wait for Supabase to load
+function initApp() {
+  if (typeof supabase === 'undefined') {
+    setTimeout(initApp, 100);
+    return;
+  }
+
 // ======= Supabase 初始化 =======
 // 支持通过 URL 参数快速注入：?sbUrl=...&sbKey=...
 (function injectEnvFromQuery(){
@@ -483,6 +490,15 @@ ui.btnSaveProfile.addEventListener('click', async (e)=>{
     loadMySlots(); 
   }
 })();
+
+}
+
+// Start the app when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 </script>
 </body>
 </html>
