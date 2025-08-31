@@ -76,6 +76,21 @@
         </div>
       </div>
     </section>
+    
+    <!-- OTP 验证（注册/登录后弹出） -->
+    <section id="otp-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+      <h3 class="text-lg font-semibold mb-2">输入邮箱验证码</h3>
+      <p class="text-sm text-gray-500">
+        验证码已发送至 <span id="otp-email" class="font-medium"></span> ，请在 5 分钟内输入 6 位数字完成验证。
+      </p>
+      <div class="mt-3 flex items-center gap-3">
+        <input id="otp-code" inputmode="numeric" pattern="\d*" maxlength="6"
+               placeholder="6位验证码"
+               class="px-3 py-2 border rounded-md w-40 tracking-widest text-center">
+        <button id="btnVerifyOtp" class="px-4 py-2 rounded-md bg-blue-600 text-white">验证</button>
+        <button id="btnOtpCancel" class="px-4 py-2 rounded-md border">取消</button>
+      </div>
+    </section>
 
     <!-- 公告栏（新增） -->
       <section id="board-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
@@ -1057,15 +1072,22 @@ async function register(){
 
   try{
     const { data, error } = await sb.auth.signUp({
-      email,
-      password: pass,
-      // ✅ 邮件确认后跳到同一个 verified.html
-      options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
-    });
-    if(error) throw error;
+          email,
+          password: pass,
+          // 你之前配置的回调也可保留；用验证码时不依赖它
+          options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+        });
+        if (error) throw error;
+        
+        // 若开启了邮件确认，通常 data.user 存在但没有 session —— 触发 OTP 验证
+        if (data.user && !data.session) {
+          openOtp('signup', email);
+          toast('验证码已发送到邮箱，请输入 6 位代码完成注册验证', 'success');
+        } else {
+          toast('注册成功！', 'success');
+        }
 
-    if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
-    else toast('注册成功！','success');
+    
   }catch(e){
     toast('注册失败：'+(e.message||'Database error'),'error');
   }finally{
@@ -1073,6 +1095,51 @@ async function register(){
   }
 }
 
+
+    
+      // ===== OTP 验证通用逻辑 =====
+      let otpCtx = null;   // 'signup' | 'email'
+      let otpEmail = null;
+      
+      function openOtp(type, email){
+        otpCtx = type;
+        otpEmail = email;
+        document.getElementById('otp-email').textContent = email;
+        document.getElementById('otp-code').value = '';
+        document.getElementById('otp-section').classList.remove('hidden');
+        document.getElementById('otp-code').focus();
+      }
+      
+      function closeOtp(){
+        document.getElementById('otp-section').classList.add('hidden');
+      }
+      
+      async function verifyOtpSubmit(){
+        const token = (document.getElementById('otp-code').value || '').trim();
+        if(!/^\d{6}$/.test(token)){ toast('请输入 6 位数字验证码', 'error'); return; }
+        try{
+          const { error } = await sb.auth.verifyOtp({ email: otpEmail, token, type: otpCtx });
+          if (error) throw error;
+      
+          toast('邮箱验证成功', 'success');
+          closeOtp();
+      
+          // 验证成功后通常会拥有会话；刷新 UI
+          const { data:{ session } } = await sb.auth.getSession();
+          updateAuthUI(session);
+        }catch(e){
+          toast('验证失败：' + (e.message || '无效验证码'), 'error');
+        }
+      }
+      
+      // 事件绑定（放在你的其它 addEventListener 附近）
+      document.getElementById('btnVerifyOtp').addEventListener('click', verifyOtpSubmit);
+      document.getElementById('btnOtpCancel').addEventListener('click', closeOtp);
+      document.getElementById('otp-code').addEventListener('keyup', e=>{
+        if(e.key === 'Enter') verifyOtpSubmit();
+      });
+
+    
 
     
   </script>
