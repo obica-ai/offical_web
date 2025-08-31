@@ -1140,7 +1140,6 @@ async function register(){
       document.getElementById('otp-code').addEventListener('keyup', e=>{
         if(e.key === 'Enter') verifyOtpSubmit();
       });
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 自动带出邮箱
 const savedEmail = localStorage.getItem('lastEmail') || '';
