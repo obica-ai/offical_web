@@ -687,7 +687,8 @@ async function register(){
 
   try{
     // ✅ 同样在请求前存一下
-    try { localStorage.setItem('lastEmail', email); } catch(_) {}
+    localStorage.setItem('lastEmail', email); 
+    localStorage.setItem('lastOtpType', 'signup');
 
     const { data, error } = await sb.auth.signUp({
       email,
@@ -715,7 +716,8 @@ async function register(){
       
         try{
           // ✅ 就放这里：在真正发请求之前
-          try { localStorage.setItem('lastEmail', email); } catch(_) {}
+          localStorage.setItem('lastEmail', email); 
+          localStorage.setItem('lastOtpType', 'signup');
       
           await sb.auth.signInWithOtp({
             email,
@@ -1138,7 +1140,43 @@ async function register(){
       document.getElementById('otp-code').addEventListener('keyup', e=>{
         if(e.key === 'Enter') verifyOtpSubmit();
       });
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// 自动带出邮箱
+const savedEmail = localStorage.getItem('lastEmail') || '';
+document.getElementById('v-email').value = savedEmail;
+
+function say(t){ document.getElementById('v-msg').textContent = t; }
+
+document.getElementById('v-btn').onclick = async () => {
+  const email = document.getElementById('v-email').value.trim();
+  const token = document.getElementById('v-code').value.trim();
+  if (!email || !/^\d{6}$/.test(token)) { say('请填写邮箱和6位验证码'); return; }
+
+  // 先用上次动作类型，再兜底试常见类型
+  const first = localStorage.getItem('lastOtpType') || 'signup';
+  const candidates = Array.from(new Set([first, 'signup', 'magiclink']));
+
+  let ok = false, lastErr = null;
+  for (const type of candidates) {
+    const { data, error } = await sb.auth.verifyOtp({ email, token, type });
+    if (!error) { ok = true; break; }
+    lastErr = error;
+    // 只有 400/403 才尝试下一个，其它错误直接退出
+    if (error?.status && ![400,403].includes(error.status)) break;
+  }
+
+  if (ok) {
+    say('验证成功！正在建立会话…');
+    // 可选：拉取会话，跳回首页
+    const { data:{ session } } = await sb.auth.getSession();
+    // 跳回你的主页面
+    location.href = 'index.html';
+  } else {
+    say('验证失败：' + (lastErr?.message || '请重试'));
+  }
+};
+    
     
 
     
