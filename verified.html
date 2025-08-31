@@ -98,54 +98,61 @@
       }
     })();
 
-    function getSavedEmail(){ try{ return localStorage.getItem('lastEmail')||'' }catch{ return '' } }
+      function getSavedEmail(){ try { return localStorage.getItem('lastEmail') || '' } catch { return '' } }
 
-async function resendLink(){
-  const email = prompt('请输入邮箱以重发登录链接：', getSavedEmail());
-  if(!email) return;
-  await sb.auth.signInWithOtp({
-    email,
-    options:{ emailRedirectTo:'https://obica-ai.github.io/travel_web/verified.html' }
-  });
-  show(true, '已发送新的登录链接', '请点击最新那封邮件；也可直接用邮件中的 6 位验证码登录');
+async function resendVerify(){
+  const email = prompt('请输入要重发验证的邮箱：', getSavedEmail());
+  if (!email) return;
+  try {
+    await sb.auth.resend({
+      type: 'signup',                    // ✅ 这是“重发注册验证”
+      email,
+      options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+    });
+    show(true, '已重发验证邮件', '请点击最新那封；也可直接用邮件中的 6 位验证码验证');
+  } catch (e) {
+    show(false, '重发失败', e.message || '');
+  }
 }
 
+// 允许“输入 6 位验证码”完成验证/登录（邮箱里会显示）
 function showOtpBox(){
   const box = document.createElement('div');
   box.className='mt-4 flex justify-center gap-2';
-  box.innerHTML=`
-    <input id="otp" maxlength="6" class="px-3 py-2 border rounded-md w-28 text-center" placeholder="6位验证码">
-    <button id="btnOtp" class="px-4 py-2 rounded-md bg-blue-600 text-white">用验证码登录</button>
+  box.innerHTML = `
+    <input id="otp" maxlength="6" class="px-3 py-2 border rounded-md w-28 text-center" placeholder="邮件验证码">
+    <button id="btnOtp" class="px-4 py-2 rounded-md bg-blue-600 text-white">用验证码完成验证</button>
   `;
   document.querySelector('.p-6').appendChild(box);
+
   document.getElementById('btnOtp').onclick = async ()=>{
     const email = prompt('请输入你的邮箱：', getSavedEmail());
-    const otp   = document.getElementById('otp').value.trim();
-    if(!email || !otp){ return; }
-    try{
-      // 优先尝试“邮件验证码”类型；不行再回退 magiclink
-      try{
-        await sb.auth.verifyOtp({ email, token: otp, type: 'email' });
-      }catch(_){
-        await sb.auth.verifyOtp({ email, token: otp, type: 'magiclink' });
-      }
-      show(true,'登录成功 🎉','已通过验证码完成登录');
+    const otp = document.getElementById('otp').value.trim();
+    if (!email || !otp) return;
+
+    try {
+      // 优先“email”类型，不行再回退 magiclink
+      try { await sb.auth.verifyOtp({ email, token: otp, type: 'email' }); }
+      catch { await sb.auth.verifyOtp({ email, token: otp, type: 'magiclink' }); }
+      show(true, '邮箱验证成功', `已登录：${email}`);
       setTimeout(()=>location.href='/travel_web/index.html', 1200);
-    }catch(e){
-      show(false,'验证码登录失败', e.message||'');
+    } catch (e) {
+      show(false, '验证码验证失败', e.message || '');
     }
   };
 }
 
-function showErrorAndResend(msg){
-  show(false,'未能建立会话', msg||'链接可能已失效或被邮箱机器人点过了');
+// 错误时给出重发与验证码方案
+function showErrorAndActions(msg){
+  showErrorAndActions('链接无效或已过期');
   const btn = document.createElement('button');
   btn.className='mt-4 px-4 py-2 rounded-md bg-blue-600 text-white';
-  btn.textContent='重新发送登录链接';
-  btn.onclick=resendLink;
+  btn.textContent='重发验证邮件';
+  btn.onclick=resendVerify;
   document.querySelector('.p-6').appendChild(btn);
-  showOtpBox(); // 同时给出“输入验证码登录”
+  showOtpBox();
 }
+
 
     
   </script>
