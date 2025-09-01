@@ -12,6 +12,7 @@
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+  
   <!-- 顶部栏 -->
   <header class="bg-white shadow-sm border-b">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -20,12 +21,26 @@
         <h1 class="text-lg font-semibold">城际同行</h1>
       </div>
       <nav class="flex items-center gap-2 text-sm">
-        <button id="nav-board" class="px-3 py-1.5 rounded-md hover:bg-gray-100">公告栏</button>
+        <button id="nav-board" class="px-3 py-1.5 rounded-md hover:bg-gray-100"></button>
         <button id="nav-passenger" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</button>
         <button id="nav-driver" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</button>
+        <button id="btnSwitchRole" class="hidden px-3 py-1.5 rounded-md border text-sm">切换角色</button>
+
       </nav>
     </div>
   </header>
+  
+  <!-- 选择角色（登录后且未设置角色时显示） -->
+<section id="role-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+  <h3 class="text-lg font-semibold mb-2">选择你的角色</h3>
+  <p class="text-sm text-gray-500 mb-4">选择后将进入对应页面（可在资料页更改）。</p>
+  <div class="flex gap-3">
+    <button id="choose-passenger" class="px-5 py-2 rounded-md bg-blue-600 text-white">我是乘客</button>
+    <button id="choose-driver" class="px-5 py-2 rounded-md bg-green-600 text-white">我是司机</button>
+  </div>
+</section>
+
+  
 
   <!-- 环境状态条 -->
   <div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
@@ -57,13 +72,28 @@
         <div class="flex gap-2">
           <button id="btnLogin" class="px-4 py-2 rounded-md bg-blue-600 text-white">登录</button>
           <button id="btnRegister" class="px-4 py-2 rounded-md bg-green-600 text-white">注册</button>
-          <button id="btnMagic" class="px-4 py-2 rounded-md border">发登录链接</button>
+          <button id="btnMagic" class="px-4 py-2 rounded-md border">发登录链接(仅通过邮箱登录)</button>
         </div>
+      </div>
+    </section>
+    
+    <!-- OTP 验证（注册/登录后弹出） -->
+    <section id="otp-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+      <h3 class="text-lg font-semibold mb-2">输入邮箱验证码</h3>
+      <p class="text-sm text-gray-500">
+        验证码已发送至 <span id="otp-email" class="font-medium"></span> ，请在 5 分钟内输入 6 位数字完成验证。
+      </p>
+      <div class="mt-3 flex items-center gap-3">
+        <input id="otp-code" inputmode="numeric" pattern="\d*" maxlength="6"
+               placeholder="6位验证码"
+               class="px-3 py-2 border rounded-md w-40 tracking-widest text-center">
+        <button id="btnVerifyOtp" class="px-4 py-2 rounded-md bg-blue-600 text-white">验证</button>
+        <button id="btnOtpCancel" class="px-4 py-2 rounded-md border">取消</button>
       </div>
     </section>
 
     <!-- 公告栏（新增） -->
-    <section id="board-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
+      <section id="board-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">公告栏</h3>
         <div class="flex items-center gap-2">
@@ -88,7 +118,7 @@
         </div>
       </div>
       <p class="text-xs text-gray-500 mt-4">提示：已开启 Realtime 时，公告栏会自动更新；否则可点“刷新”。</p>
-    </section>
+    </section> 
 
     <!-- 个人资料 -->
     <section id="profile-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
@@ -110,6 +140,17 @@
 
     <!-- 乘客 -->
     <section id="passenger-section" class="hidden">
+      <!-- 可用司机列表（乘客可见） -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">可用司机</h4>
+            <div class="flex items-center gap-2">
+              <input id="driver-filter" class="px-3 py-2 border rounded-md text-sm" placeholder="按城市 / 州 / 邮编筛选">
+              <button id="btnDriversRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
+            </div>
+          </div>
+          <div id="driver-list" class="space-y-3"></div>
+        </div>
       <div class="bg-white rounded-xl border shadow-sm p-6">
         <h2 class="text-lg font-semibold mb-4">乘客 - 发布行程需求</h2>
 
@@ -193,6 +234,17 @@
 
     <!-- 司机 -->
     <section id="driver-section" class="hidden">
+      <!-- 乘客需求列表（司机可见） -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">乘客需求</h4>
+            <div class="flex items-center gap-2">
+              <input id="passenger-filter" class="px-3 py-2 border rounded-md text-sm" placeholder="按城市 / 州 / 邮编筛选">
+              <button id="btnPassengersRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
+            </div>
+          </div>
+          <div id="passenger-list" class="space-y-3"></div>
+        </div>
       <div class="bg-white rounded-xl border shadow-sm p-6">
         <h2 class="text-lg font-semibold mb-4">司机 - 发布可用时间表</h2>
 
@@ -624,39 +676,83 @@
       }catch(e){ toast('登录失败：'+(e.message||'Bad Request'),'error'); }
       finally{ btn.disabled=false; btn.textContent='登录'; }
     }
-    async function register(){
-      const email = document.getElementById('authEmail').value.trim();
-      const pass  = document.getElementById('authPass').value.trim();
-      if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
-      const btn = document.getElementById('btnRegister'); btn.disabled=true; btn.textContent='注册中…';
-      try{
-        const { data, error } = await sb.auth.signUp({ email, password: pass });
-        if(error) throw error;
-        if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
-        else toast('注册成功！','success');
-      }catch(e){ toast('注册失败：'+(e.message||'Database error'),'error'); }
-      finally{ btn.disabled=false; btn.textContent='注册'; }
-    }
-    async function magicLink(){
-      const email = document.getElementById('authEmail').value.trim();
-      if(!email){ toast('请输入邮箱','error'); return; }
-      const btn = document.getElementById('btnMagic'); btn.disabled=true; btn.textContent='发送中…';
-      try{
-        const redirect = location.href;
-        const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirect } });
-        if(error) throw error;
-        toast('已发送登录链接，请查收邮箱','success');
-      }catch(e){ toast('发送失败：'+(e.message||'配置错误（检查 Redirect URLs）'),'error'); }
-      finally{ btn.disabled=false; btn.textContent='发登录链接'; }
-    }
+
+    
+    // 2) 注册（可选，但推荐同样存一下）
+async function register(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value.trim();
+  if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
+  const btn = document.getElementById('btnRegister'); btn.disabled = true; btn.textContent = '注册中…';
+
+  try{
+    // ✅ 同样在请求前存一下
+    localStorage.setItem('lastEmail', email); 
+    localStorage.setItem('lastOtpType', 'signup');
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pass,
+      options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+    });
+    if(error) throw error;
+
+    if(data.user && !data.session) toast('注册成功！请到邮箱点击确认链接后再登录','success');
+    else toast('注册成功！','success');
+  } catch(e) {
+    toast('注册失败：'+(e.message||'Database error'),'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '注册';
+  }
+}
+
+
+    
+    // 1) 发送登录链接（Magic Link）
+      async function magicLink(){
+        const email = document.getElementById('authEmail').value.trim();
+        if(!email){ toast('请输入邮箱','error'); return; }
+        const btn = document.getElementById('btnMagic'); btn.disabled = true; btn.textContent = '发送中…';
+      
+        try{
+          // ✅ 就放这里：在真正发请求之前
+          localStorage.setItem('lastEmail', email); 
+          localStorage.setItem('lastOtpType', 'signup');
+      
+          await sb.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+          });
+      
+          toast('已发送登录链接，请查收邮箱','success');
+        } catch(e) {
+          toast('发送失败：'+(e.message||'配置错误'),'error');
+        } finally {
+          btn.disabled = false; btn.textContent = '发登录链接';
+        }
+      }
+
+
     async function signOut(){
       await sb.auth.signOut(); toast('已退出','success');
     }
 
     // —— 初始化与事件绑定 ——
     document.getElementById('nav-board').addEventListener('click', ()=>{ showSection('board'); loadBoard(); });
-    document.getElementById('nav-passenger').addEventListener('click', ()=>showSection('passenger'));
-    document.getElementById('nav-driver').addEventListener('click', ()=>showSection('driver'));
+    document.getElementById('nav-passenger').addEventListener('click', ()=>{
+      showSection('passenger');
+      loadDriversList();
+    });
+    document.getElementById('nav-driver').addEventListener('click', ()=>{
+      showSection('driver');
+      loadPassengersList();
+    });
+    document.getElementById('driver-filter').addEventListener('input', e => renderDriversList(e.target.value.trim()));
+    document.getElementById('btnDriversRefresh').addEventListener('click', loadDriversList);
+    
+    document.getElementById('passenger-filter').addEventListener('input', e => renderPassengersList(e.target.value.trim()));
+    document.getElementById('btnPassengersRefresh').addEventListener('click', loadPassengersList);
+    
     document.getElementById('btnLogin').addEventListener('click', login);
     document.getElementById('btnRegister').addEventListener('click', register);
     document.getElementById('btnMagic').addEventListener('click', magicLink);
@@ -667,6 +763,13 @@
     document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
     document.getElementById('btnBoardRefresh').addEventListener('click', loadBoard);
     document.getElementById('board-filter').addEventListener('input', (e)=> renderBoard(e.target.value.trim()));
+    document.getElementById('choose-passenger')?.addEventListener('click', ()=> setUserRole('passenger'));
+    document.getElementById('choose-driver')?.addEventListener('click',    ()=> setUserRole('driver'));
+    document.getElementById('btnSwitchRole')?.addEventListener('click', ()=>{
+      // 允许已登录用户随时切换
+      document.getElementById('role-section').classList.remove('hidden');
+      ['passenger','driver'].forEach(id=>document.getElementById(id+'-section')?.classList.add('hidden'));
+    });
 
     // 会话恢复
     (async ()=>{
@@ -699,16 +802,383 @@
       document.getElementById('authBox').classList.toggle('hidden', authed);
       document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
       document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
+      document.getElementById('btnSwitchRole').classList.toggle('hidden', !authed);
     
-      // 任何人都先看到公告栏
-      showSection('board');
-      // 都加载一次公告数据（RLS 已放开读取）
-      loadBoard();
-    
-      // Realtime（如果你开启了并允许 anon 订阅，可以保留；否则保留也不会影响读取）
-      try { setupRealtime(); } catch (_) {}
+      if (authed) {
+        ensureUserRole();      // ✅ 登录后要求/应用角色
+      } else {
+        userRole = null;
+        updateNavForRole();
+        document.getElementById('role-section')?.classList.add('hidden');
+        // 未登录时你想默认展示什么随意（比如登录/资料）
+        showSection('profile');
+      }
     }
 
+
+    // —— 分页缓存 —— 
+const listCache = { drivers: [], passengers: [] };
+
+// 工具：格式化地址、卡片、徽标（复用你已有的函数即可，如已存在可忽略）
+function fmtAddr(o){
+  const line1 = [o.city, o.state, o.postal].filter(Boolean).join(', ');
+  const line2 = [o.street1, o.street2].filter(Boolean).join(' ');
+  return { line1, line2 };
+}
+function card(el){ return `<div class="border rounded-lg p-3 bg-white shadow-sm">${el}</div>`; }
+function badge(t){ return `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 border">${t}</span>`; }
+
+// 渲染：可用司机（乘客页用）
+function renderDriversList(filterText=''){
+  const wrap = document.getElementById('driver-list');
+  if(!wrap) return;
+  const t = (filterText||'').toLowerCase();
+  const rows = listCache.drivers.filter(r=>{
+    if(!t) return true;
+    const s = [
+      r.origin_city || r.from_city, r.origin_state, r.origin_postal_code,
+      r.destination_city || r.to_city, r.destination_state, r.destination_postal_code
+    ].filter(Boolean).join(' ').toLowerCase();
+    return s.includes(t);
+  });
+  wrap.innerHTML = rows.map(r=>{
+  const o = fmtAddr({ city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '', street1: r.origin_street1 || '', street2: r.origin_street2 || ''});
+  const d = fmtAddr({ city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '', street1: r.destination_street1 || '', street2: r.destination_street2 || ''});
+  const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+  const price = (r.price_per_person && Number(r.price_per_person)>0) ? `${r.price_per_person}` : '—';
+
+  const prof = r._profile || {};
+  const nameBadge = badge(maskName(prof.full_name));
+  const genderBadge = badge('性别 ' + genderLabel(prof.gender));
+
+  return card(`
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        ${badge('司机')} ${badge('可载 '+r.available_seats+' 人')} ${nameBadge} ${genderBadge}
+      </div>
+      <div class="text-sm font-medium">出发：${o.line1}</div>
+      <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+      <div class="text-sm mt-1">到达：${d.line1}</div>
+      <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+      <div class="text-sm mt-1">时间：${dt}</div>
+      <div class="text-sm text-gray-600">价格/人：${price}</div>
+      ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+    </div>
+  `);
+}).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+
+}
+
+// 渲染：乘客需求（司机页用）
+function renderPassengersList(filterText=''){
+  const wrap = document.getElementById('passenger-list');
+  if(!wrap) return;
+  const t = (filterText||'').toLowerCase();
+  const rows = listCache.passengers.filter(r=>{
+    if(!t) return true;
+    const s = [
+      r.origin_city || r.from_city, r.origin_state, r.origin_postal_code,
+      r.destination_city || r.to_city, r.destination_state, r.destination_postal_code
+    ].filter(Boolean).join(' ').toLowerCase();
+    return s.includes(t);
+  });
+  wrap.innerHTML = rows.map(r=>{
+  const o = fmtAddr({ city: r.origin_city || r.from_city || '-', state: r.origin_state || '-', postal: r.origin_postal_code || '', street1: r.origin_street1 || '', street2: r.origin_street2 || ''});
+  const d = fmtAddr({ city: r.destination_city || r.to_city || '-', state: r.destination_state || '-', postal: r.destination_postal_code || '', street1: r.destination_street1 || '', street2: r.destination_street2 || ''});
+  const dt = `${r.date} ${r.time?.slice(0,5) || ''}`;
+
+  const prof = r._profile || {};
+  const nameBadge = badge(maskName(prof.full_name));
+  const genderBadge = badge('性别 ' + genderLabel(prof.gender));
+
+  return card(`
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        ${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')} ${nameBadge} ${genderBadge}
+      </div>
+      <div class="text-sm font-medium">出发：${o.line1}</div>
+      <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+      <div class="text-sm mt-1">到达：${d.line1}</div>
+      <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+      <div class="text-sm mt-1">时间：${dt}</div>
+      ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+    </div>
+  `);
+}).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+
+}
+
+// 载入：司机（给乘客页）
+async function loadDriversList(){
+  const now = Date.now();
+  const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
+  const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+
+  const { data, error } = await sb.from('driver_schedules')
+    .select('*')
+    .gte('date', start).lte('date', end)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true })
+    .limit(50);
+  if (error) { console.error(error); toast('加载司机时间表失败：'+error.message,'error'); return; }
+
+  listCache.drivers = data || [];
+  renderDriversList(document.getElementById('driver-filter')?.value?.trim());
+}
+
+// 载入：乘客（给司机页）
+async function loadPassengersList(){
+  const now = Date.now();
+  const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
+  const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+
+  const { data, error } = await sb.from('passenger_requests')
+    .select('*')
+    .gte('date', start).lte('date', end)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true })
+    .limit(50);
+  if (error) { console.error(error); toast('加载乘客需求失败：'+error.message,'error'); return; }
+
+  // ⭐ 拉取并合并公开资料
+  const profileMap = await fetchProfilesForUserIds((data||[]).map(r=>r.user_id));
+  listCache.passengers = (data || []).map(r => ({ ...r, _profile: profileMap[r.user_id] || null }));
+
+  renderPassengersList(document.getElementById('passenger-filter')?.value?.trim());
+}
+
+
+    // 当前用户角色（'passenger' | 'driver' | null）
+let userRole = null;
+
+// 读取资料（若不存在返回 null）
+async function fetchProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await sb
+    .from('user_profiles').select('*')
+    .eq('user_id', user.id).maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
+}
+
+// 设置/保存角色（写入 user_profiles.user_role）
+async function setUserRole(role) {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const { error } = await sb
+    .from('user_profiles')
+    .upsert({ user_id: user.id, user_role: role }, { onConflict: 'user_id' });
+  if (error) throw error;
+  userRole = role;
+  updateNavForRole();
+  // 进入对应页面并加载列表（这两个函数你之前已加过）
+  if (role === 'passenger') { showSection('passenger'); loadDriversList(); }
+  else                      { showSection('driver');    loadPassengersList(); }
+  document.getElementById('role-section').classList.add('hidden');
+}
+
+// 根据角色隐藏/显示导航
+function updateNavForRole() {
+  document.getElementById('nav-passenger')?.classList.toggle('hidden', userRole !== 'passenger');
+  document.getElementById('nav-driver')?.classList.toggle('hidden',    userRole !== 'driver');
+}
+
+// 登录后确保有角色：无则弹“选择角色”，有则直接进对应页
+async function ensureUserRole() {
+  const profile = await fetchProfile();
+  userRole = profile?.user_role || null;
+  updateNavForRole();
+
+  if (!userRole) {
+    // 只显示角色选择页
+    ['board','profile','passenger','driver'].forEach(id=>{
+      const el = document.getElementById(id+'-section'); if (el) el.classList.add('hidden');
+    });
+    document.getElementById('role-section').classList.remove('hidden');
+  } else {
+    document.getElementById('role-section')?.classList.add('hidden');
+    if (userRole === 'passenger') { showSection('passenger'); loadDriversList(); }
+    else                          { showSection('driver');    loadPassengersList(); }
+  }
+}
+
+    
+// 姓名脱敏：英文取“最后一个单词”，否则取第1个字符，然后加 **
+function maskName(name){
+  if(!name) return '匿名';
+  const s = String(name).trim();
+  if(!s) return '匿名';
+  const parts = s.split(/\s+/);
+  const base = parts.length > 1 ? parts[parts.length - 1] : s[0];
+  return base + '**';
+}
+function genderLabel(g){
+  return g === 'male' ? '男' : (g === 'female' ? '女' : '-');
+}
+
+// 批量拉取公开资料（优先用视图；失败再回退到 user_profiles）
+async function fetchProfilesForUserIds(ids){
+  const uniq = Array.from(new Set((ids || []).filter(Boolean)));
+  if(uniq.length === 0) return {};
+  // 先尝试视图
+  try{
+    const { data, error } = await sb
+      .from('profile_public')
+      .select('user_id, full_name, gender')
+      .in('user_id', uniq);
+    if (error) throw error;
+    const map = {};
+    (data || []).forEach(p => map[p.user_id] = p);
+    return map;
+  }catch(e){
+    // 回退到底表（需要对 user_profiles 授权 SELECT 才能成功）
+    try{
+      const { data, error } = await sb
+        .from('user_profiles')
+        .select('user_id, full_name, gender')
+        .in('user_id', uniq);
+      if (error) throw error;
+      const map = {};
+      (data || []).forEach(p => map[p.user_id] = p);
+      return map;
+    }catch(e2){
+      console.warn('fetchProfiles failed', e2);
+      return {};
+    }
+  }
+}
+// 发送登录链接（magic link）
+async function magicLink(){
+  const email = document.getElementById('authEmail').value.trim();
+  if(!email){ toast('请输入邮箱','error'); return; }
+  const btn = document.getElementById('btnMagic'); btn.disabled=true; btn.textContent='发送中…';
+  try{
+    const redirect = `${location.origin}/verified.html`;   // ✅ 指向回调页
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirect }
+    });
+    if(error) throw error;
+    toast('已发送登录链接，请查收邮箱','success');
+  }catch(e){ toast('发送失败：'+(e.message||'配置错误（检查 Redirect URLs）'),'error'); }
+  finally{ btn.disabled=false; btn.textContent='发登录链接'; }
+}
+
+// 注册（带邮件确认时也建议指定回调）
+async function register(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value.trim();
+  if(!email || !pass){ toast('请输入邮箱与密码','error'); return; }
+  const btn = document.getElementById('btnRegister'); btn.disabled=true; btn.textContent='注册中…';
+
+  try{
+    const { data, error } = await sb.auth.signUp({
+          email,
+          password: pass,
+          // 你之前配置的回调也可保留；用验证码时不依赖它
+          options: { emailRedirectTo: 'https://obica-ai.github.io/travel_web/verified.html' }
+        });
+        if (error) throw error;
+        
+        // 若开启了邮件确认，通常 data.user 存在但没有 session —— 触发 OTP 验证
+        if (data.user && !data.session) {
+          openOtp('signup', email);
+          toast('验证码已发送到邮箱，请输入 6 位代码完成注册验证', 'success');
+        } else {
+          toast('注册成功！', 'success');
+        }
+
+    
+  }catch(e){
+    toast('注册失败：'+(e.message||'Database error'),'error');
+  }finally{
+    btn.disabled=false; btn.textContent='注册';
+  }
+}
+
+
+    
+      // ===== OTP 验证通用逻辑 =====
+      let otpCtx = null;   // 'signup' | 'email'
+      let otpEmail = null;
+      
+      function openOtp(type, email){
+        otpCtx = type;
+        otpEmail = email;
+        document.getElementById('otp-email').textContent = email;
+        document.getElementById('otp-code').value = '';
+        document.getElementById('otp-section').classList.remove('hidden');
+        document.getElementById('otp-code').focus();
+      }
+      
+      function closeOtp(){
+        document.getElementById('otp-section').classList.add('hidden');
+      }
+      
+      async function verifyOtpSubmit(){
+        const token = (document.getElementById('otp-code').value || '').trim();
+        if(!/^\d{6}$/.test(token)){ toast('请输入 6 位数字验证码', 'error'); return; }
+        try{
+          const { error } = await sb.auth.verifyOtp({ email: otpEmail, token, type: otpCtx });
+          if (error) throw error;
+      
+          toast('邮箱验证成功', 'success');
+          closeOtp();
+      
+          // 验证成功后通常会拥有会话；刷新 UI
+          const { data:{ session } } = await sb.auth.getSession();
+          updateAuthUI(session);
+        }catch(e){
+          toast('验证失败：' + (e.message || '无效验证码'), 'error');
+        }
+      }
+      
+      // 事件绑定（放在你的其它 addEventListener 附近）
+      document.getElementById('btnVerifyOtp').addEventListener('click', verifyOtpSubmit);
+      document.getElementById('btnOtpCancel').addEventListener('click', closeOtp);
+      document.getElementById('otp-code').addEventListener('keyup', e=>{
+        if(e.key === 'Enter') verifyOtpSubmit();
+      });
+
+// 自动带出邮箱
+const savedEmail = localStorage.getItem('lastEmail') || '';
+document.getElementById('v-email').value = savedEmail;
+
+function say(t){ document.getElementById('v-msg').textContent = t; }
+
+document.getElementById('v-btn').onclick = async () => {
+  const email = document.getElementById('v-email').value.trim();
+  const token = document.getElementById('v-code').value.trim();
+  if (!email || !/^\d{6}$/.test(token)) { say('请填写邮箱和6位验证码'); return; }
+
+  // 先用上次动作类型，再兜底试常见类型
+  const first = localStorage.getItem('lastOtpType') || 'signup';
+  const candidates = Array.from(new Set([first, 'signup', 'magiclink']));
+
+  let ok = false, lastErr = null;
+  for (const type of candidates) {
+    const { data, error } = await sb.auth.verifyOtp({ email, token, type });
+    if (!error) { ok = true; break; }
+    lastErr = error;
+    // 只有 400/403 才尝试下一个，其它错误直接退出
+    if (error?.status && ![400,403].includes(error.status)) break;
+  }
+
+  if (ok) {
+    say('验证成功！正在建立会话…');
+    // 可选：拉取会话，跳回首页
+    const { data:{ session } } = await sb.auth.getSession();
+    // 跳回你的主页面
+    location.href = 'index.html';
+  } else {
+    say('验证失败：' + (lastErr?.message || '请重试'));
+  }
+};
+    
+    
+
+    
   </script>
 </body>
 </html>
