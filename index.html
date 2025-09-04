@@ -21,7 +21,7 @@
         <h1 class="text-lg font-semibold">城际同行</h1>
       </div>
       <nav class="flex items-center gap-2 text-sm">
-        <button id="nav-board" class="px-3 py-1.5 rounded-md hover:bg-gray-100"></button>
+        <button id="nav-board" class="px-3 py-1.5 rounded-md hover:bg-gray-100">公告栏</button>
         <button id="nav-passenger" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</button>
         <button id="nav-driver" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</button>
         <button id="btnSwitchRole" class="hidden px-3 py-1.5 rounded-md border text-sm">切换角色</button>
@@ -120,7 +120,7 @@
       <p class="text-xs text-gray-500 mt-4">提示：已开启 Realtime 时，公告栏会自动更新；否则可点“刷新”。</p>
     </section> 
 
-    <!-- 个人资料 -->
+    <!-- 个人资料 
     <section id="profile-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
       <h3 class="text-lg font-semibold mb-4">个人资料</h3>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -136,11 +136,20 @@
       <div class="mt-4">
         <button id="btnSaveProfile" class="px-4 py-2 rounded-md bg-blue-600 text-white">保存资料</button>
       </div>
-    </section>
+    </section>-->
 
     <!-- 乘客 -->
     <section id="passenger-section" class="hidden">
       <!-- 可用司机列表（乘客可见） -->
+      <!-- 我的需求（仅本人） -->
+        <div class="bg-white rounded-xl border shadow-sm p-6 mb-6">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold">我发布的需求</h4>
+            <span id="my-passenger-count" class="text-xs text-gray-500">—</span>
+        </div>
+        <div id="my-passenger-requests" class="space-y-3"></div>
+        </div>
+
         <div class="mt-6">
           <div class="flex items-center justify-between mb-2">
             <h4 class="font-semibold">可用司机</h4>
@@ -149,6 +158,7 @@
               <button id="btnDriversRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
             </div>
           </div>
+
           <div id="driver-list" class="space-y-3"></div>
         </div>
       <div class="bg-white rounded-xl border shadow-sm p-6">
@@ -228,13 +238,25 @@
 
         <div class="mt-4">
           <button id="add-passenger-request" class="px-5 py-2 rounded-md bg-blue-600 text-white">发布需求</button>
+          <button id="cancel-passenger-edit" class="px-3 py-2 rounded-md border hidden ml-2">取消编辑</button>
+
         </div>
       </div>
     </section>
 
-    <!-- 司机 -->
+    
+<!-- 司机 -->
     <section id="driver-section" class="hidden">
       <!-- 乘客需求列表（司机可见） -->
+            <!-- 我的时间表（仅本人） -->
+        <div class="bg-white rounded-xl border shadow-sm p-6 mb-6">
+        <div class="flex items-center justify-between mb-2">
+        <h4 class="font-semibold">我发布的时间表</h4>
+        <span id="my-driver-count" class="text-xs text-gray-500">—</span>
+        </div>
+        <div id="my-driver-schedules" class="space-y-3"></div>
+        </div>
+
         <div class="mt-6">
           <div class="flex items-center justify-between mb-2">
             <h4 class="font-semibold">乘客需求</h4>
@@ -248,6 +270,7 @@
       <div class="bg-white rounded-xl border shadow-sm p-6">
         <h2 class="text-lg font-semibold mb-4">司机 - 发布可用时间表</h2>
 
+    
         <!-- 出发地址 -->
         <h4 class="text-sm font-semibold text-gray-700 mb-2">出发地址</h4>
         <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
@@ -322,7 +345,9 @@
         </div>
 
         <div class="mt-4">
-          <button id="add-driver-schedule" class="px-5 py-2 rounded-md bg-green-600 text-white">发布时间表</button>
+            <button id="add-driver-schedule" class="px-5 py-2 rounded-md bg-green-600 text-white">发布时间表</button>
+            <button id="cancel-driver-edit" class="px-3 py-2 rounded-md border hidden ml-2">取消编辑</button>
+
         </div>
       </div>
     </section>
@@ -422,7 +447,7 @@
       } catch (e) {
         // fallback：直接写表（要求 user_profiles 策略允许本人 upsert）
         const { data: sess } = await sb.auth.getUser();
-        const uid = sess?.user?.id;
+        const uid = (await sb.auth.getSession()).data.session.user.id;
         const { data, error } = await sb.from('user_profiles').upsert({
           user_id: uid,
           full_name: payload.p_full_name, phone: payload.p_phone, id_number: payload.p_id_number,
@@ -539,20 +564,29 @@
       const now = Date.now();
       const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
       const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
-    
-      const { data: d, error: de } = await sb.from('driver_schedules')
-        .select('*')
-        .gte('date', start).lte('date', end)
-        .order('date', { ascending: true })
-        .order('time', { ascending: true })
-        .limit(50);  // 多给点
-    
-      const { data: p, error: pe } = await sb.from('passenger_requests')
-        .select('*')
-        .gte('date', start).lte('date', end)
-        .order('date', { ascending: true })
-        .order('time', { ascending: true })
-        .limit(50);
+    // 取当前用户 id（未登录则为 null）
+        const { data: { user } } = await sb.auth.getUser();
+        const uid = user?.id || null;
+      // 司机可用
+        let qd = sb.from('driver_schedules')
+            .select('*')
+            .gte('date', start).lte('date', end)
+            .order('date', { ascending: true })
+            .order('time', { ascending: true })
+            .limit(50);
+        if (uid) qd = qd.neq('user_id', uid);      // ★ 排除自己
+
+        // 乘客需求
+        let qp = sb.from('passenger_requests')
+            .select('*')
+            .gte('date', start).lte('date', end)
+            .order('date', { ascending: true })
+            .order('time', { ascending: true })
+            .limit(50);
+        if (uid) qp = qp.neq('user_id', uid);      // ★ 排除自己
+
+        const [{ data: d, error: de }, { data: p, error: pe }] = await Promise.all([qd, qp]);
+
     
       if (de) { console.error('load drivers error', de); toast('加载司机时间表失败：'+de.message,'error'); }
       if (pe) { console.error('load passenger error', pe); toast('加载乘客需求失败：'+pe.message,'error'); }
@@ -565,95 +599,135 @@
 
     // —— 业务提交：乘客 ——
     async function addPassengerRequest(){
-      const { data: sess } = await sb.auth.getSession();
-      if(!sess?.session){ toast('请先登录', 'error'); return; }
+  const { data: sess } = await sb.auth.getSession();
+  if(!sess?.session){ toast('请先登录', 'error'); return; }
 
-      // 先保存/创建资料（允许为空）
-      try { await saveOrCreateProfile(); } catch(e){ toast('保存个人资料失败：'+e.message,'error'); return; }
+  // 可选：保存/创建资料
+  try { await saveOrCreateProfile(); } catch(e){ toast('保存个人资料失败：'+e.message,'error'); return; }
 
-      const o = readAddress('passenger-origin'); if(!o.ok){ toast(o.msg,'error'); return; }
-      const d = readAddress('passenger-dest');   if(!d.ok){ toast(d.msg,'error'); return; }
+  const o = readAddress('passenger-origin'); if(!o.ok){ toast(o.msg,'error'); return; }
+  const d = readAddress('passenger-dest');   if(!d.ok){ toast(d.msg,'error'); return; }
 
-      const date  = document.getElementById('passenger-date').value;
-      const time  = document.getElementById('passenger-time').value;
-      const seats = parseInt(document.getElementById('passenger-seats').value,10);
-      const note  = document.getElementById('passenger-note').value.trim();
+  const date  = document.getElementById('passenger-date').value;
+  const time  = document.getElementById('passenger-time').value;
+  const seats = parseInt(document.getElementById('passenger-seats').value,10);
+  const note  = document.getElementById('passenger-note').value.trim();
+  if(!date || !time || !seats || seats<=0){ toast('日期/时间/座位必填','error'); return; }
 
-      if(!date || !time || !seats || seats<=0){ toast('日期/时间/座位必填','error'); return; }
+  const payload = {
+    date, time, seats_needed: seats, note,
+    origin_country: o.data.country,
+    origin_street1: o.data.street1,
+    origin_street2: o.data.street2,
+    origin_city:    o.data.city,
+    origin_state:   o.data.state,
+    origin_postal_code: o.data.postal,
+    destination_country: d.data.country,
+    destination_street1: d.data.street1,
+    destination_street2: d.data.street2,
+    destination_city:    d.data.city,
+    destination_state:   d.data.state,
+    destination_postal_code: d.data.postal,
+    // 兼容旧列
+    from_city: o.data.city, to_city: d.data.city
+  };
 
-      const btn = document.getElementById('add-passenger-request');
-      btn.disabled = true; btn.textContent = '提交中…';
-      try{
-        const { error } = await sb.from('passenger_requests').insert({
-          user_id: sess.session.user.id,
-          date, time, seats_needed: seats, note,
-          origin_country: o.data.country,
-          origin_street1: o.data.street1,
-          origin_street2: o.data.street2,
-          origin_city:    o.data.city,
-          origin_state:   o.data.state,
-          origin_postal_code: o.data.postal,
-          destination_country: d.data.country,
-          destination_street1: d.data.street1,
-          destination_street2: d.data.street2,
-          destination_city:    d.data.city,
-          destination_state:   d.data.state,
-          destination_postal_code: d.data.postal,
-          // 兼容老列（如仍存在）
-          from_city: o.data.city, to_city: d.data.city
-        });
-        if(error) throw error;
-        toast('需求发布成功','success');
-        // 刷新公告栏
-        loadBoard();
-      }catch(e){ toast('发布失败：'+e.message,'error'); }
-      finally{ btn.disabled=false; btn.textContent='发布需求'; }
+  const btn = document.getElementById('add-passenger-request');
+  btn.disabled = true;
+  btn.textContent = editingPassengerId ? '保存中…' : '提交中…';
+
+  try{
+    if (editingPassengerId){
+      // 仅更新内容，不改 user_id
+      const { error } = await sb.from('passenger_requests')
+        .update(payload).eq('id', editingPassengerId);
+      if (error) throw error;
+      toast('已保存修改','success');
+    }else{
+      const { error } = await sb.from('passenger_requests')
+        .insert({ user_id: sess.session.user.id, ...payload });
+      if (error) throw error;
+      toast('需求发布成功','success');
     }
+
+    // 刷新并恢复初始态
+    await Promise.all([loadMyPassengerRequests(), loadBoard()]);
+    editingPassengerId = null;
+    setPassengerSubmitLabel();
+    resetPassengerForm();
+  }catch(e){
+    toast('提交失败：'+e.message,'error');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '发布需求';
+  }
+}
+
 
     // —— 业务提交：司机 ——
     async function addDriverSchedule(){
-      const { data: sess } = await sb.auth.getSession();
-      if(!sess?.session){ toast('请先登录','error'); return; }
+        const { data: sess } = await sb.auth.getSession();
+        if(!sess?.session){ toast('请先登录','error'); return; }
 
-      try { await saveOrCreateProfile(); } catch(e){ toast('保存个人资料失败：'+e.message,'error'); return; }
+        try { await saveOrCreateProfile(); } catch(e){ toast('保存个人资料失败：'+e.message,'error'); return; }
 
-      const o = readAddress('driver-origin'); if(!o.ok){ toast(o.msg,'error'); return; }
-      const d = readAddress('driver-dest');   if(!d.ok){ toast(d.msg,'error'); return; }
+        const o = readAddress('driver-origin'); if(!o.ok){ toast(o.msg,'error'); return; }
+        const d = readAddress('driver-dest');   if(!d.ok){ toast(d.msg,'error'); return; }
 
-      const date  = document.getElementById('driver-date').value;
-      const time  = document.getElementById('driver-time').value;
-      const seats = parseInt(document.getElementById('driver-seats').value,10);
-      const price = parseFloat(document.getElementById('driver-price').value) || 0;
-      const note  = document.getElementById('driver-note').value.trim();
+        const date  = document.getElementById('driver-date').value;
+        const time  = document.getElementById('driver-time').value;
+        const seats = parseInt(document.getElementById('driver-seats').value,10);
+        const price = parseFloat(document.getElementById('driver-price').value) || 0;
+        const note  = document.getElementById('driver-note').value.trim();
+        if(!date || !time || !seats || seats<=0){ toast('日期/时间/座位必填','error'); return; }
 
-      if(!date || !time || !seats || seats<=0){ toast('日期/时间/座位必填','error'); return; }
+        const payload = {
+            date, time, available_seats: seats,
+            price_per_person: isNaN(price)?0:price, note,
+            origin_country: o.data.country,
+            origin_street1: o.data.street1,
+            origin_street2: o.data.street2,
+            origin_city:    o.data.city,
+            origin_state:   o.data.state,
+            origin_postal_code: o.data.postal,
+            destination_country: d.data.country,
+            destination_street1: d.data.street1,
+            destination_street2: d.data.street2,
+            destination_city:    d.data.city,
+            destination_state:   d.data.state,
+            destination_postal_code: d.data.postal,
+            from_city: o.data.city, to_city: d.data.city
+        };
 
-      const btn = document.getElementById('add-driver-schedule');
-      btn.disabled = true; btn.textContent = '提交中…';
-      try{
-        const { error } = await sb.from('driver_schedules').insert({
-          user_id: sess.session.user.id,
-          date, time, available_seats: seats, price_per_person: isNaN(price)?0:price, note,
-          origin_country: o.data.country,
-          origin_street1: o.data.street1,
-          origin_street2: o.data.street2,
-          origin_city:    o.data.city,
-          origin_state:   o.data.state,
-          origin_postal_code: o.data.postal,
-          destination_country: d.data.country,
-          destination_street1: d.data.street1,
-          destination_street2: d.data.street2,
-          destination_city:    d.data.city,
-          destination_state:   d.data.state,
-          destination_postal_code: d.data.postal,
-          from_city: o.data.city, to_city: d.data.city
-        });
-        if(error) throw error;
-        toast('时间表发布成功','success');
-        loadBoard();
-      }catch(e){ toast('发布失败：'+e.message,'error'); }
-      finally{ btn.disabled=false; btn.textContent='发布时间表'; }
-    }
+        const btn = document.getElementById('add-driver-schedule');
+        btn.disabled = true;
+        btn.textContent = editingDriverId ? '保存中…' : '提交中…';
+
+        try{
+            if (editingDriverId){
+            const { error } = await sb.from('driver_schedules')
+                .update(payload).eq('id', editingDriverId);
+            if (error) throw error;
+            toast('已保存修改','success');
+            }else{
+            const { error } = await sb.from('driver_schedules')
+                .insert({ user_id: sess.session.user.id, ...payload });
+            if (error) throw error;
+            toast('时间表发布成功','success');
+            }
+
+            await Promise.all([loadMyDriverSchedules(), loadBoard()]);
+            editingDriverId = null;
+            setDriverSubmitLabel();
+            resetDriverForm();
+        }catch(e){
+            toast('提交失败：'+e.message,'error');
+        }finally{
+            btn.disabled = false;
+            btn.textContent = '发布时间表';
+        }
+        }
+
 
     // —— 资料单独保存按钮（可选） ——
     async function saveProfileButton(){
@@ -742,23 +816,26 @@ async function register(){
     document.getElementById('nav-passenger').addEventListener('click', ()=>{
       showSection('passenger');
       loadDriversList();
+      loadMyPassengerRequests(); // ★
     });
     document.getElementById('nav-driver').addEventListener('click', ()=>{
       showSection('driver');
       loadPassengersList();
+      loadMyDriverSchedules();   // ★
     });
     document.getElementById('driver-filter').addEventListener('input', e => renderDriversList(e.target.value.trim()));
     document.getElementById('btnDriversRefresh').addEventListener('click', loadDriversList);
     
     document.getElementById('passenger-filter').addEventListener('input', e => renderPassengersList(e.target.value.trim()));
     document.getElementById('btnPassengersRefresh').addEventListener('click', loadPassengersList);
-    
+    document.getElementById('cancel-passenger-edit')?.addEventListener('click', cancelPassengerEdit);
+    document.getElementById('cancel-driver-edit')?.addEventListener('click',   cancelDriverEdit);
+
     document.getElementById('btnLogin').addEventListener('click', login);
     document.getElementById('btnRegister').addEventListener('click', register);
     document.getElementById('btnMagic').addEventListener('click', magicLink);
     document.getElementById('btnSignOut').addEventListener('click', signOut);
     document.getElementById('btnEditProfile').addEventListener('click', ()=>showSection('profile'));
-    document.getElementById('btnSaveProfile').addEventListener('click', saveProfileButton);
     document.getElementById('add-passenger-request').addEventListener('click', addPassengerRequest);
     document.getElementById('add-driver-schedule').addEventListener('click', addDriverSchedule);
     document.getElementById('btnBoardRefresh').addEventListener('click', loadBoard);
@@ -797,23 +874,28 @@ async function register(){
     }
 
     function updateAuthUI(session){
-      const authed = !!session?.user;
-      document.getElementById('authStatus').textContent = authed ? `已登录：${session.user.email}` : '未登录';
-      document.getElementById('authBox').classList.toggle('hidden', authed);
-      document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
-      document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
-      document.getElementById('btnSwitchRole').classList.toggle('hidden', !authed);
-    
-      if (authed) {
-        ensureUserRole();      // ✅ 登录后要求/应用角色
-      } else {
-        userRole = null;
-        updateNavForRole();
-        document.getElementById('role-section')?.classList.add('hidden');
-        // 未登录时你想默认展示什么随意（比如登录/资料）
-        showSection('profile');
-      }
-    }
+        const authed = !!session?.user;
+        document.getElementById('authStatus').textContent = authed ? `已登录：${session.user.email}` : '未登录';
+        document.getElementById('authBox').classList.toggle('hidden', authed);
+        document.getElementById('btnSignOut').classList.toggle('hidden', !authed);
+        document.getElementById('btnEditProfile').classList.toggle('hidden', !authed);
+        document.getElementById('btnSwitchRole').classList.toggle('hidden', !authed);
+
+        if (authed) {
+            ensureUserRole();   // 登录后应用/要求角色
+            setupRealtime();
+            showSection('board');
+            loadBoard();
+        } else {
+            userRole = null;
+            updateNavForRole?.();
+            document.getElementById('role-section')?.classList.add('hidden');
+            // ⚠️ 你的 profile-section 已注释，这里改成公告栏
+            showSection('board');
+            loadBoard();
+        }
+        }
+
 
 
     // —— 分页缓存 —— 
@@ -908,42 +990,50 @@ function renderPassengersList(filterText=''){
 
 }
 
-// 载入：司机（给乘客页）
+// 载入：司机（给乘客页）——排除自己
 async function loadDriversList(){
   const now = Date.now();
   const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
   const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+  const { data:{ user } } = await sb.auth.getUser();
+  const uid = user?.id || null;
 
-  const { data, error } = await sb.from('driver_schedules')
+  let q = sb.from('driver_schedules')
     .select('*')
     .gte('date', start).lte('date', end)
     .order('date', { ascending: true })
     .order('time', { ascending: true })
     .limit(50);
+  if (uid) q = q.neq('user_id', uid);
+
+  const { data, error } = await q;
   if (error) { console.error(error); toast('加载司机时间表失败：'+error.message,'error'); return; }
 
   listCache.drivers = data || [];
   renderDriversList(document.getElementById('driver-filter')?.value?.trim());
 }
 
-// 载入：乘客（给司机页）
+// 载入：乘客（给司机页）——排除自己 + 附公开资料
 async function loadPassengersList(){
   const now = Date.now();
   const start = new Date(now - 30*24*60*60*1000).toISOString().slice(0,10);
   const end   = new Date(now + 90*24*60*60*1000).toISOString().slice(0,10);
+  const { data:{ user } } = await sb.auth.getUser();
+  const uid = user?.id || null;
 
-  const { data, error } = await sb.from('passenger_requests')
+  let q = sb.from('passenger_requests')
     .select('*')
     .gte('date', start).lte('date', end)
     .order('date', { ascending: true })
     .order('time', { ascending: true })
     .limit(50);
+  if (uid) q = q.neq('user_id', uid);
+
+  const { data, error } = await q;
   if (error) { console.error(error); toast('加载乘客需求失败：'+error.message,'error'); return; }
 
-  // ⭐ 拉取并合并公开资料
   const profileMap = await fetchProfilesForUserIds((data||[]).map(r=>r.user_id));
   listCache.passengers = (data || []).map(r => ({ ...r, _profile: profileMap[r.user_id] || null }));
-
   renderPassengersList(document.getElementById('passenger-filter')?.value?.trim());
 }
 
@@ -973,8 +1063,8 @@ async function setUserRole(role) {
   userRole = role;
   updateNavForRole();
   // 进入对应页面并加载列表（这两个函数你之前已加过）
-  if (role === 'passenger') { showSection('passenger'); loadDriversList(); }
-  else                      { showSection('driver');    loadPassengersList(); }
+  if (role === 'passenger') { showSection('passenger'); loadDriversList(); loadMyPassengerRequests();}
+  else                      { showSection('driver');    loadPassengersList(); loadMyDriverSchedules(); }
   document.getElementById('role-section').classList.add('hidden');
 }
 
@@ -998,8 +1088,8 @@ async function ensureUserRole() {
     document.getElementById('role-section').classList.remove('hidden');
   } else {
     document.getElementById('role-section')?.classList.add('hidden');
-    if (userRole === 'passenger') { showSection('passenger'); loadDriversList(); }
-    else                          { showSection('driver');    loadPassengersList(); }
+    if (userRole === 'passenger') { showSection('passenger'); loadDriversList(); loadMyPassengerRequests();}
+    else                          { showSection('driver');    loadPassengersList();loadMyDriverSchedules(); }
   }
 }
 
@@ -1142,43 +1232,212 @@ async function register(){
       });
 
 // 自动带出邮箱
-const savedEmail = localStorage.getItem('lastEmail') || '';
-document.getElementById('v-email').value = savedEmail;
+    
 
-function say(t){ document.getElementById('v-msg').textContent = t; }
+    // —— “我的”编辑状态 —— 
+let editingPassengerId = null;
+let editingDriverId = null;
 
-document.getElementById('v-btn').onclick = async () => {
-  const email = document.getElementById('v-email').value.trim();
-  const token = document.getElementById('v-code').value.trim();
-  if (!email || !/^\d{6}$/.test(token)) { say('请填写邮箱和6位验证码'); return; }
 
-  // 先用上次动作类型，再兜底试常见类型
-  const first = localStorage.getItem('lastOtpType') || 'signup';
-  const candidates = Array.from(new Set([first, 'signup', 'magiclink']));
+// —— 我的乘客需求 —— 
+async function loadMyPassengerRequests(){
+  const wrap = document.getElementById('my-passenger-requests');
+  const counter = document.getElementById('my-passenger-count');
+  if(!wrap || !counter) return;
 
-  let ok = false, lastErr = null;
-  for (const type of candidates) {
-    const { data, error } = await sb.auth.verifyOtp({ email, token, type });
-    if (!error) { ok = true; break; }
-    lastErr = error;
-    // 只有 400/403 才尝试下一个，其它错误直接退出
-    if (error?.status && ![400,403].includes(error.status)) break;
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user){ wrap.innerHTML = '<div class="text-sm text-gray-500">登录后可查看你发布的需求</div>'; counter.textContent='—'; return; }
+
+  const { data, error } = await sb.from('passenger_requests')
+    .select('*').eq('user_id', user.id)
+    .order('date',{ascending:false}).order('time',{ascending:false}).limit(50);
+  if(error){ wrap.innerHTML = `<div class="text-sm text-red-600">${error.message}</div>`; counter.textContent='—'; return; }
+
+  counter.textContent = `${(data||[]).length} 条`;
+  wrap.innerHTML = (data||[]).map(r=>{
+    const o=fmtAddr({city:r.origin_city||r.from_city||'-',state:r.origin_state||'-',postal:r.origin_postal_code||'',street1:r.origin_street1||'',street2:r.origin_street2||''});
+    const d=fmtAddr({city:r.destination_city||r.to_city||'-',state:r.destination_state||'-',postal:r.destination_postal_code||'',street1:r.destination_street1||'',street2:r.destination_street2||''});
+    const dt=`${r.date} ${r.time?.slice(0,5)||''}`;
+    return card(`
+      <div>
+        <div class="flex items-center gap-2 mb-1">${badge('我的需求')} ${badge('需 '+r.seats_needed+' 座')}</div>
+        <div class="text-sm font-medium">出发：${o.line1}</div><div class="text-xs text-gray-500">${o.line2||''}</div>
+        <div class="text-sm mt-1">到达：${d.line1}</div><div class="text-xs text-gray-500">${d.line2||''}</div>
+        <div class="text-sm mt-1">时间：${dt}</div>
+        ${r.note?`<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+        <div class="flex gap-2 mt-2">
+          <button class="text-blue-600 text-sm underline" data-act="edit-passenger" data-id="${r.id}">编辑</button>
+          <button class="text-red-600 text-sm underline"  data-act="del-passenger"  data-id="${r.id}">删除</button>
+        </div>
+      </div>
+    `);
+  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+}
+
+// —— 我的司机时间表 —— 
+async function loadMyDriverSchedules(){
+  const wrap = document.getElementById('my-driver-schedules');
+  const counter = document.getElementById('my-driver-count');
+  if(!wrap || !counter) return;
+
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user){ wrap.innerHTML = '<div class="text-sm text-gray-500">登录后可查看你发布的时间表</div>'; counter.textContent='—'; return; }
+
+  const { data, error } = await sb.from('driver_schedules')
+    .select('*').eq('user_id', user.id)
+    .order('date',{ascending:false}).order('time',{ascending:false}).limit(50);
+  if(error){ wrap.innerHTML = `<div class="text-sm text-red-600">${error.message}</div>`; counter.textContent='—'; return; }
+
+  counter.textContent = `${(data||[]).length} 条`;
+  wrap.innerHTML = (data||[]).map(r=>{
+    const o=fmtAddr({city:r.origin_city||r.from_city||'-',state:r.origin_state||'-',postal:r.origin_postal_code||'',street1:r.origin_street1||'',street2:r.origin_street2||''});
+    const d=fmtAddr({city:r.destination_city||r.to_city||'-',state:r.destination_state||'-',postal:r.destination_postal_code||'',street1:r.destination_street1||'',street2:r.destination_street2||''});
+    const dt=`${r.date} ${r.time?.slice(0,5)||''}`;
+    const price=(r.price_per_person && Number(r.price_per_person)>0)?`${r.price_per_person}`:'—';
+    return card(`
+      <div>
+        <div class="flex items-center gap-2 mb-1">${badge('我的时间表')} ${badge('可载 '+r.available_seats+' 人')}</div>
+        <div class="text-sm font-medium">出发：${o.line1}</div><div class="text-xs text-gray-500">${o.line2||''}</div>
+        <div class="text-sm mt-1">到达：${d.line1}</div><div class="text-xs text-gray-500">${d.line2||''}</div>
+        <div class="text-sm mt-1">时间：${dt}</div>
+        <div class="text-sm text-gray-600">价格/人：${price}</div>
+        ${r.note?`<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>`:''}
+        <div class="flex gap-2 mt-2">
+          <button class="text-blue-600 text-sm underline" data-act="edit-driver" data-id="${r.id}">编辑</button>
+          <button class="text-red-600 text-sm underline"  data-act="del-driver"  data-id="${r.id}">删除</button>
+        </div>
+      </div>
+    `);
+  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+}
+
+// —— 编辑/删除事件委托 —— 
+document.addEventListener('click', async (e)=>{
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  const id = el.dataset.id, act = el.dataset.act;
+
+  if(act==='edit-passenger'){
+    const { data, error } = await sb.from('passenger_requests').select('*').eq('id', id).single();
+    if(error){ toast('读取失败：'+error.message,'error'); return; }
+    // 回填表单
+    document.getElementById('passenger-origin-country').value=data.origin_country||'US';
+    document.getElementById('passenger-origin-street1').value=data.origin_street1||'';
+    document.getElementById('passenger-origin-street2').value=data.origin_street2||'';
+    document.getElementById('passenger-origin-city').value=data.origin_city||'';
+    document.getElementById('passenger-origin-state').value=data.origin_state||'';
+    document.getElementById('passenger-origin-postal').value=data.origin_postal_code||'';
+    document.getElementById('passenger-dest-country').value=data.destination_country||'US';
+    document.getElementById('passenger-dest-street1').value=data.destination_street1||'';
+    document.getElementById('passenger-dest-street2').value=data.destination_street2||'';
+    document.getElementById('passenger-dest-city').value=data.destination_city||'';
+    document.getElementById('passenger-dest-state').value=data.destination_state||'';
+    document.getElementById('passenger-dest-postal').value=data.destination_postal_code||'';
+    document.getElementById('passenger-date').value=data.date||'';
+    document.getElementById('passenger-time').value=data.time||'';
+    document.getElementById('passenger-seats').value=data.seats_needed||'';
+    document.getElementById('passenger-note').value=data.note||'';
+    editingPassengerId=id; setPassengerSubmitLabel(); showSection('passenger');
+  }
+  if(act==='del-passenger'){
+    if(!confirm('确定删除这条需求吗？')) return;
+    const { error } = await sb.from('passenger_requests').delete().eq('id', id);
+    if(error){ toast('删除失败：'+error.message,'error'); return; }
+    toast('已删除','success'); loadMyPassengerRequests(); loadBoard();
   }
 
-  if (ok) {
-    say('验证成功！正在建立会话…');
-    // 可选：拉取会话，跳回首页
-    const { data:{ session } } = await sb.auth.getSession();
-    // 跳回你的主页面
-    location.href = 'index.html';
-  } else {
-    say('验证失败：' + (lastErr?.message || '请重试'));
+  if(act==='edit-driver'){
+    const { data, error } = await sb.from('driver_schedules').select('*').eq('id', id).single();
+    if(error){ toast('读取失败：'+error.message,'error'); return; }
+    // 回填表单
+    document.getElementById('driver-origin-country').value=data.origin_country||'US';
+    document.getElementById('driver-origin-street1').value=data.origin_street1||'';
+    document.getElementById('driver-origin-street2').value=data.origin_street2||'';
+    document.getElementById('driver-origin-city').value=data.origin_city||'';
+    document.getElementById('driver-origin-state').value=data.origin_state||'';
+    document.getElementById('driver-origin-postal').value=data.origin_postal_code||'';
+    document.getElementById('driver-dest-country').value=data.destination_country||'US';
+    document.getElementById('driver-dest-street1').value=data.destination_street1||'';
+    document.getElementById('driver-dest-street2').value=data.destination_street2||'';
+    document.getElementById('driver-dest-city').value=data.destination_city||'';
+    document.getElementById('driver-dest-state').value=data.destination_state||'';
+    document.getElementById('driver-dest-postal').value=data.destination_postal_code||'';
+    document.getElementById('driver-date').value=data.date||'';
+    document.getElementById('driver-time').value=data.time||'';
+    document.getElementById('driver-seats').value=data.available_seats||'';
+    document.getElementById('driver-price').value=data.price_per_person||'';
+    document.getElementById('driver-note').value=data.note||'';
+    editingDriverId=id; setDriverSubmitLabel(); showSection('driver');
   }
-};
-    
-    
+  if(act==='del-driver'){
+    if(!confirm('确定删除这条时间表吗？')) return;
+    const { error } = await sb.from('driver_schedules').delete().eq('id', id);
+    if(error){ toast('删除失败：'+error.message,'error'); return; }
+    toast('已删除','success'); loadMyDriverSchedules(); loadBoard();
+  }
+});
 
-    
+
+// ====== 全局编辑状态 ======
+
+
+// ====== UI 辅助 ======
+function setPassengerSubmitLabel(){
+  const btn = document.getElementById('add-passenger-request');
+  const cancel = document.getElementById('cancel-passenger-edit');
+  if(editingPassengerId){
+    btn.textContent = '保存修改';
+    cancel?.classList.remove('hidden');
+  }else{
+    btn.textContent = '发布需求';
+    cancel?.classList.add('hidden');
+  }
+}
+function setDriverSubmitLabel(){
+  const btn = document.getElementById('add-driver-schedule');
+  const cancel = document.getElementById('cancel-driver-edit');
+  if(editingDriverId){
+    btn.textContent = '保存修改';
+    cancel?.classList.remove('hidden');
+  }else{
+    btn.textContent = '发布时间表';
+    cancel?.classList.add('hidden');
+  }
+}
+
+function resetPassengerForm(){
+  ['passenger-origin-street1','passenger-origin-street2','passenger-origin-city','passenger-origin-state','passenger-origin-postal',
+   'passenger-dest-street1','passenger-dest-street2','passenger-dest-city','passenger-dest-state','passenger-dest-postal',
+   'passenger-date','passenger-time','passenger-seats','passenger-note'
+  ].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('passenger-origin-country').value='US';
+  document.getElementById('passenger-dest-country').value='US';
+}
+
+function resetDriverForm(){
+  ['driver-origin-street1','driver-origin-street2','driver-origin-city','driver-origin-state','driver-origin-postal',
+   'driver-dest-street1','driver-dest-street2','driver-dest-city','driver-dest-state','driver-dest-postal',
+   'driver-date','driver-time','driver-seats','driver-price','driver-note'
+  ].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('driver-origin-country').value='US';
+  document.getElementById('driver-dest-country').value='US';
+}
+
+// 取消编辑（乘客/司机）
+function cancelPassengerEdit(){
+  editingPassengerId = null;
+  setPassengerSubmitLabel();
+  resetPassengerForm();
+}
+function cancelDriverEdit(){
+  editingDriverId = null;
+  setDriverSubmitLabel();
+  resetDriverForm();
+}
+
+// ====== 覆盖提交逻辑：新增 or 更新 ======
+
+
+
   </script>
 </body>
 </html>
