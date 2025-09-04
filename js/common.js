@@ -31,6 +31,30 @@ function toast(msg, type='info'){
 }
 function card(el){ return `<div class="border rounded-lg p-3 bg-white shadow-sm">${el}</div>`; }
 function badge(t){ return `<span class="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 border">${t}</span>`; }
+
+// 状态映射 + 徽章
+const STATUS_LABEL = {
+  open: '未接单',
+  carpooling: '拼车中',
+  matched: '已接单',
+  full: '满员',
+  completed: '已完成',
+  cancelled: '已取消'
+};
+
+function statusBadge(s){
+  const text = STATUS_LABEL[s] || '—';
+  const cls =
+    s === 'open'       ? 'bg-emerald-50 border-emerald-200' :
+    s === 'carpooling' ? 'bg-blue-50 border-blue-200' :
+    s === 'matched'    ? 'bg-indigo-50 border-indigo-200' :
+    s === 'full'       ? 'bg-yellow-50 border-yellow-200' :
+    s === 'completed'  ? 'bg-gray-50 border-gray-200' :
+                         'bg-red-50 border-red-200';
+  return `<span class="inline-block text-xs px-2 py-0.5 rounded-full border ${cls}">${text}</span>`;
+}
+
+
 function fmtAddr(o){ const line1=[o.city,o.state,o.postal].filter(Boolean).join(', '); const line2=[o.street1,o.street2].filter(Boolean).join(' '); return {line1,line2}; }
 function maskName(name){ if(!name) return '匿名'; const s=String(name).trim(); if(!s) return '匿名'; const parts=s.split(/\s+/); const base=parts.length>1?parts[parts.length-1]:s[0]; return base+'**'; }
 function genderLabel(g){ return g==='male'?'男':(g==='female'?'女':'-'); }
@@ -65,10 +89,26 @@ async function setUserRole(role){
   if(role==='passenger') location.href='passenger.html';
   else location.href='driver.html';
 }
-async function ensureUserRole(){
-  const profile = await fetchProfile();
-  return profile?.user_role || null;
+async function ensureUserRole() {
+  try {
+    const profile = await fetchProfile();
+    const role = profile?.user_role || null;
+
+    // 缓存：有角色就写入，没有就删除
+    if (role) {
+      localStorage.setItem('roleHint', role);
+    } else {
+      localStorage.removeItem('roleHint');
+    }
+
+    return role;
+  } catch (e) {
+    console.warn('ensureUserRole failed', e);
+    // 失败不改动本地缓存，直接返回 null
+    return null;
+  }
 }
+
 async function saveOrCreateProfile(){
   const payload={
     p_full_name: document.getElementById('profile-name')?.value?.trim()||null,
@@ -228,9 +268,105 @@ function updateAuthUI(session){
 })();
 sb.auth.onAuthStateChange((_evt, session)=> updateAuthUI(session));
 
+async function seatsTakenForSchedule(sb, scheduleId){
+  const { data, error } = await sb
+    .from('matches')
+    .select('seats,status')
+    .eq('driver_schedule_id', scheduleId);
+  if (error) throw error;
+  return (data||[])
+    .filter(r => r.status === 'accepted')
+    .reduce((n,r)=> n + (r.seats||0), 0);
+}
+
+async function mySchedulesLite(sb){
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user) return [];
+  const { data, error } = await sb
+    .from('driver_schedules')
+    .select('id,date,time,origin_city,destination_city,available_seats')
+    .eq('user_id', user.id)
+    .gte('date', new Date(Date.now()-7*864e5).toISOString().slice(0,10))
+    .order('date',{ascending:true}).order('time',{ascending:true});
+  if (error) throw error;
+  return data||[];
+}
+
+async function myRequestsLite(sb){
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user) return [];
+  const { data, error } = await sb
+    .from('passenger_requests')
+    .select('id,date,time,origin_city,destination_city,seats_needed')
+    .eq('user_id', user.id)
+    .gte('date', new Date(Date.now()-7*864e5).toISOString().slice(0,10))
+    .order('date',{ascending:true}).order('time',{ascending:true});
+  if (error) throw error;
+  return data||[];
+}
+
+
 /* ---------- 导出到全局，供子页脚本使用 ---------- */
 window.__app = {
   sb, toast, card, badge, fmtAddr, maskName, genderLabel,
   readAddress, saveOrCreateProfile, fetchProfilesForUserIds,
-  ensureUserRole, setUserRole
+  ensureUserRole, setUserRole,// 新增导出
+  STATUS_LABEL,
+  statusBadge,
+  seatsTakenForSchedule,
+  mySchedulesLite,
+  myRequestsLite
 };
+// ---- 将公共方法安全导出到全局 ----
+// 回首页后读 flash 并弹出
+(function () {
+  const msg = sessionStorage.getItem('flash');
+  if (msg) {
+    try { sessionStorage.removeItem('flash'); } catch (_) {}
+    // 稍微延后，等 DOM/样式就绪
+    setTimeout(() => { try { toast(msg, 'error'); } catch (_) {} }, 30);
+  }
+})();
+
+// ---- 安全导出到全局（若你已存在此段，保留 Object.assign 的方式即可）----
+(function () {
+  window.__app = window.__app || {};
+  Object.assign(window.__app, {
+    sb,
+    toast, card, badge, fmtAddr, maskName, genderLabel,
+    readAddress, saveOrCreateProfile, fetchProfilesForUserIds,
+    ensureUserRole, setUserRole
+  });
+
+  // 统一拒绝处理：写入一个 flash，再回首页
+  function denyToIndex(msg = '请选择正确的角色') {
+    try { sessionStorage.setItem('flash', msg); } catch (_) {}
+    location.replace('index.html');      // 统一回主页面
+  }
+
+  // 角色守卫：不匹配/未设置/未登录 -> 统一 deny
+  window.__app.requireRole = function requireRole(requiredRole, opts = {}) {
+    const onAllow = opts.onAllow;
+    const app = window.__app;
+
+    async function check(session) {
+      // 无论哪种不满足都统一回首页并提示
+      if (!session?.user)                return denyToIndex();
+      const role = await app.ensureUserRole();
+      if (!role)                         return denyToIndex();
+      if (role !== requiredRole)         return denyToIndex();
+
+      if (typeof onAllow === 'function') await onAllow(session, role);
+    }
+
+    (async () => {
+      const { data: { session } } = await app.sb.auth.getSession();
+      await check(session);
+    })();
+
+    app.sb.auth.onAuthStateChange((_evt, session) => { check(session); });
+  };
+})();
+
+
+

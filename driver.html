@@ -2,6 +2,9 @@
   <!doctype html>
 <html lang="zh-Hans">
 <head>
+<style>html.guard{visibility:hidden}</style>
+<script>document.documentElement.classList.add('guard');</script>
+
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>城际同行 · 司机</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,8 +16,7 @@
       <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-blue-600"></div><h1 class="text-lg font-semibold">城际同行</h1></div>
       <nav class="flex items-center gap-2 text-sm">
         <a href="index.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">主页面</a>
-        <a href="passenger.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</a>
-        <a href="driver.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</a>
+
       </nav>
       <div class="flex items-center gap-3">
         <span id="authStatus" class="text-sm text-gray-600">未登录</span>
@@ -53,6 +55,11 @@
 
     <!-- 乘客需求列表 -->
     <section>
+    <div class="flex items-center gap-2 mb-3">
+  <label class="text-sm text-gray-600">选择你的时间表：</label>
+  <select id="selMySchedule" class="px-3 py-2 border rounded-md text-sm min-w-[280px]"></select>
+</div>
+
       <div class="flex items-center justify-between mb-2">
         <h4 class="font-semibold">乘客需求</h4>
         <div class="flex items-center gap-2">
@@ -99,7 +106,18 @@
         <input id="driver-seats" type="number" min="1" max="8" placeholder="可载人数" class="px-3 py-2 border rounded-md">
         <input id="driver-price" type="number" min="0" step="0.01" placeholder="每人价格(元)" class="px-3 py-2 border rounded-md">
         <input id="driver-note" placeholder="备注（可选）" class="px-3 py-2 border rounded-md">
+        <input id="driver-luggage" type="number" min="0" max="12" placeholder="可装行李上限(件)" class="px-3 py-2 border rounded-md">
       </div>
+      <div class="mt-2">
+  <select id="driver-status" class="px-3 py-2 border rounded-md text-sm">
+    <option value="open" selected>未接单</option>
+    <option value="carpooling">拼车中</option>
+    <option value="matched">已接单</option>
+    <option value="full">满员</option>
+    <option value="completed">已完成</option>
+    <option value="cancelled">已取消</option>
+  </select>
+</div>
       <div class="mt-4">
         <button id="add-driver-schedule" class="px-5 py-2 rounded-md bg-green-600 text-white">发布时间表</button>
         <button id="cancel-driver-edit" class="px-3 py-2 rounded-md border hidden ml-2">取消编辑</button>

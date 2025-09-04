@@ -14,8 +14,6 @@
       <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-blue-600"></div><h1 class="text-lg font-semibold">城际同行</h1></div>
       <nav class="flex items-center gap-2 text-sm">
         <a href="index.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">主页面</a>
-        <a href="passenger.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</a>
-        <a href="driver.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</a>
       </nav>
     </div>
   </header>
@@ -26,6 +24,7 @@
   <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden"></div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
     <!-- Auth -->
     <section class="bg-white rounded-xl border shadow-sm p-6">
       <div class="flex items-center justify-between">
@@ -45,6 +44,18 @@
         </div>
       </div>
     </section>
+
+    <section id="entry-section" class="mt-6 flex gap-3">
+  <button id="btnGoPassenger" class="hidden px-4 py-2 rounded-md bg-blue-600 text-white">
+    进入乘客页
+  </button>
+  <button id="btnGoDriver" class="hidden px-4 py-2 rounded-md bg-green-600 text-white">
+    进入司机页
+  </button>
+  <button id="btnPickRole" class="hidden px-4 py-2 rounded-md border">
+    未登录角色
+  </button>
+</section>
 
     <!-- OTP -->
     <section id="otp-section" class="hidden bg-white rounded-xl border shadow-sm p-6">
@@ -84,4 +95,134 @@
   <script src="./js/board.js" defer></script>
   
 </body>
+<script>
+(function () {
+  const show = (el, on) => el && el.classList.toggle('hidden', !on);
+
+  // 等待 window.__app（common.js 注入），最多 2.5s
+  function waitForApp(timeoutMs = 2500) {
+    if (window.__app) return Promise.resolve(window.__app);
+    return new Promise((resolve) => {
+      const t0 = Date.now();
+      const timer = setInterval(() => {
+        if (window.__app || Date.now() - t0 > timeoutMs) {
+          clearInterval(timer);
+          resolve(window.__app || null);
+        }
+      }, 30);
+    });
+  }
+
+  // 带超时
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      promise,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+    ]);
+  }
+
+  // 重试（指数退避）
+  async function fetchRoleWithRetry(app, tries = 3, firstTimeout = 3500) {
+    let delay = 600;
+    for (let i = 0; i < tries; i++) {
+      try {
+        // 第一次给更长超时，其后退避
+        const ms = i === 0 ? firstTimeout : Math.min(firstTimeout + i * delay, 6000);
+        const role = await withTimeout(app.ensureUserRole(), ms);
+        return role ?? null;
+      } catch {
+        // 下一次再试
+        await new Promise(r => setTimeout(r, delay));
+        delay = Math.min(delay * 1.6, 1500);
+      }
+    }
+    throw new Error('timeout');
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    const btnP    = document.getElementById('btnGoPassenger');
+    const btnD    = document.getElementById('btnGoDriver');
+    const btnPick = document.getElementById('btnPickRole');
+
+    // 1) 首帧：根据缓存先“秒显”
+    const cached = localStorage.getItem('roleHint');
+    if (cached === 'passenger') {
+      show(btnP, true); show(btnD, false); show(btnPick, false);
+    } else if (cached === 'driver') {
+      show(btnP, false); show(btnD, true); show(btnPick, false);
+    } else {
+      show(btnP, false); show(btnD, false); show(btnPick, true); // 默认可见
+    }
+
+    // 2) 等 common.js
+    const app = await waitForApp();
+    if (!app) {
+      console.warn('common.js not ready — keep PickRole visible');
+      return;
+    }
+
+    // hash 提示
+    if (location.hash === '#denied') {
+      app.toast?.('你没有权限访问该页面（角色不匹配）', 'error');
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+
+    // 点击行为
+    btnP?.addEventListener('click', () => location.href = 'passenger.html');
+    btnD?.addEventListener('click', () => location.href = 'driver.html');
+    btnPick?.addEventListener('click', () => location.href = 'register.html');
+
+    // 3) 根据会话渲染（失败/超时不再清空 UI，而是保持当前显示，并在后台纠正）
+    async function renderByRole(session) {
+      if (!session?.user) {
+        // 未登录：只显示注册/选择
+        localStorage.removeItem('roleHint');
+        show(btnP, false); show(btnD, false); show(btnPick, true);
+        return;
+      }
+
+      try {
+        const role = await fetchRoleWithRetry(app, 3, 3500); // 可按需调长
+        if (role === 'passenger') {
+          localStorage.setItem('roleHint', 'passenger');
+          show(btnP, true); show(btnD, false); show(btnPick, false);
+        } else if (role === 'driver') {
+          localStorage.setItem('roleHint', 'driver');
+          show(btnP, false); show(btnD, true); show(btnPick, false);
+        } else {
+          localStorage.removeItem('roleHint');
+          show(btnP, false); show(btnD, false); show(btnPick, true);
+        }
+      } catch {
+        // 前台先不动，后台再做一次不设超时的纠偏
+        console.info('ensureUserRole slow — keep current and fix later');
+        app.ensureUserRole().then((role) => {
+          if (role === 'passenger') {
+            localStorage.setItem('roleHint', 'passenger');
+            show(btnP, true); show(btnD, false); show(btnPick, false);
+          } else if (role === 'driver') {
+            localStorage.setItem('roleHint', 'driver');
+            show(btnP, false); show(btnD, true); show(btnPick, false);
+          } else {
+            localStorage.removeItem('roleHint');
+            show(btnP, false); show(btnD, false); show(btnPick, true);
+          }
+        }).catch(() => {
+          // 保持当前展示（通常是 PickRole）
+        });
+      }
+    }
+
+    // 首次 & 监听会话变化
+    try {
+      const { data:{ session } } = await app.sb.auth.getSession();
+      renderByRole(session);
+    } catch {}
+    app.sb.auth.onAuthStateChange?.((_evt, session) => renderByRole(session));
+  });
+})();
+</script>
+
+
+
 </html>

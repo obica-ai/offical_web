@@ -33,11 +33,30 @@ function renderBoard(filterText=''){
     const o=fmtAddr({city:r.origin_city||r.from_city||'-', state:r.origin_state||'-', postal:r.origin_postal_code||'', street1:r.origin_street1||'', street2:r.origin_street2||''});
     const d=fmtAddr({city:r.destination_city||r.to_city||'-', state:r.destination_state||'-', postal:r.destination_postal_code||'', street1:r.destination_street1||'', street2:r.destination_street2||''});
     const dt=`${r.date} ${r.time?.slice(0,5)||''}`;
-    return card(`<div><div class="flex items-center gap-2 mb-1">${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')}</div>
-      <div class="text-sm font-medium">出发：${o.line1}</div><div class="text-xs text-gray-500">${o.line2||''}</div>
-      <div class="text-sm mt-1">到达：${d.line1}</div><div class="text-xs text-gray-500">${d.line2||''}</div>
-      <div class="text-sm mt-1">时间：${dt}</div></div>`);
-  }).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
+    return card(`
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          ${badge('乘客')} ${badge('需 '+r.seats_needed+' 座')}
+        </div>
+        <div class="text-sm font-medium">出发：${o.line1}</div>
+        <div class="text-xs text-gray-500">${o.line2 || ''}</div>
+        <div class="text-sm mt-1">到达：${d.line1}</div>
+        <div class="text-xs text-gray-500">${d.line2 || ''}</div>
+        <div class="text-sm mt-1">时间：${dt}</div>
+        ${r.note ? `<div class="text-xs text-gray-500 mt-1">备注：${r.note}</div>` : ''}
+
+        <!-- ✅ 新增：拼单按钮，仅乘客栏 -->
+        <div class="mt-2">
+          <button class="px-2 py-1 text-sm rounded-md border"
+                  data-act="carpool" data-id="${r.id}">
+            拼单
+          </button>
+        </div>
+      </div>
+    </div>
+  `);
+}).join('') || '<div class="text-sm text-gray-500">暂无记录</div>';
 }
 
 async function loadBoard(){
@@ -80,3 +99,33 @@ window.onAfterAuthChange = (_session)=>{ loadBoard(); setupRealtime(); };
 
 document.getElementById('btnBoardRefresh')?.addEventListener('click', loadBoard);
 document.getElementById('board-filter')?.addEventListener('input', e=> renderBoard(e.target.value.trim()));
+
+document.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('[data-act="carpool"]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+
+  const app = window.__app;
+  if (!app) return;
+
+  // 未登录：先提示登录
+  const { data:{ session } } = await app.sb.auth.getSession();
+  if (!session?.user) { app.toast('请先登录后再拼单','error'); return; }
+
+  // 必须是“乘客”角色
+  try {
+    const role = await app.ensureUserRole();
+    if (role !== 'passenger') {
+      location.href = 'index.html#denied';      // 主页面会弹“角色不匹配”
+      return;
+    }
+  } catch {
+    location.href = 'index.html#denied';
+    return;
+  }
+
+  // 跳到乘客页并携带 copyFrom 参数，乘客页会自动预填
+  const qs = new URLSearchParams({ copyFrom: id });
+  location.href = `passenger.html?${qs.toString()}`;
+});
+

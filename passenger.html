@@ -1,10 +1,14 @@
 <!doctype html>
 <html lang="zh-Hans">
 <head>
+<style>html.guard{visibility:hidden}</style>
+<script>document.documentElement.classList.add('guard');</script>
+
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>城际同行 · 乘客</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  
 </head>
 <body class="bg-gray-50 min-h-screen">
   <header class="bg-white shadow-sm border-b">
@@ -12,8 +16,7 @@
       <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-blue-600"></div><h1 class="text-lg font-semibold">城际同行</h1></div>
       <nav class="flex items-center gap-2 text-sm">
         <a href="index.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">主页面</a>
-        <a href="passenger.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</a>
-        <a href="driver.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</a>
+        
       </nav>
       <div class="flex items-center gap-3">
         <span id="authStatus" class="text-sm text-gray-600">未登录</span>
@@ -98,7 +101,18 @@
         <input id="passenger-time" type="time" class="px-3 py-2 border rounded-md">
         <input id="passenger-seats" type="number" min="1" max="8" placeholder="需要座位数" class="px-3 py-2 border rounded-md">
         <input id="passenger-note" placeholder="备注（可选）" class="px-3 py-2 border rounded-md md:col-span-1">
+        <input id="passenger-luggage" type="number" min="0" max="8" placeholder="行李件数" class="px-3 py-2 border rounded-md">
       </div>
+        <div class="mt-2">
+        <select id="passenger-status" class="px-3 py-2 border rounded-md text-sm">
+            <option value="open" selected>未接单</option>
+            <option value="carpooling">拼车中</option>
+            <option value="matched">已接单</option>
+            <option value="full">满员</option>
+            <option value="completed">已完成</option>
+            <option value="cancelled">已取消</option>
+        </select>
+        </div>
       <div class="mt-4">
         <button id="add-passenger-request" class="px-5 py-2 rounded-md bg-blue-600 text-white">发布需求</button>
         <button id="cancel-passenger-edit" class="px-3 py-2 rounded-md border hidden ml-2">取消编辑</button>
