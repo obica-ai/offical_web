@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>城际同行 · 乘客</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-blue-600"></div><h1 class="text-lg font-semibold">城际同行</h1></div>
+      <nav class="flex items-center gap-2 text-sm">
+        <a href="index.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">主页面</a>
+        <a href="passenger.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">乘客</a>
+        <a href="driver.html" class="px-3 py-1.5 rounded-md hover:bg-gray-100">司机</a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <span id="authStatus" class="text-sm text-gray-600">未登录</span>
+        <button id="btnSignOut" class="hidden px-3 py-1.5 rounded-md border text-sm">退出</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">未检测到 Supabase 配置。可在地址栏追加 <code>?sbUrl=...&sbKey=...</code>。</div>
+  </div>
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Auth（沿用 index 同块，也可省略。保留按钮即可） 
+    <section class="bg-white rounded-xl border shadow-sm p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="authBox">
+        <input id="authEmail" type="email" placeholder="邮箱" class="px-3 py-2 border rounded-md">
+        <input id="authPass" type="password" placeholder="密码（≥6位）" class="px-3 py-2 border rounded-md">
+        <div class="flex gap-2">
+          <button id="btnLogin" class="px-4 py-2 rounded-md bg-blue-600 text-white">登录</button>
+          <button id="btnRegister" class="px-4 py-2 rounded-md bg-green-600 text-white">注册</button>
+          <button id="btnMagic" class="px-4 py-2 rounded-md border">发登录链接</button>
+        </div>
+      </div>
+    </section>-->
+
+    <!-- 我发布的需求 -->
+    <section class="bg-white rounded-xl border shadow-sm p-6 mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="font-semibold">我发布的需求</h4>
+        <span id="my-passenger-count" class="text-xs text-gray-500">—</span>
+      </div>
+      <div id="my-passenger-requests" class="space-y-3"></div>
+    </section>
+
+    <!-- 可用司机 -->
+    <section>
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="font-semibold">可用司机</h4>
+        <div class="flex items-center gap-2">
+          <input id="driver-filter" class="px-3 py-2 border rounded-md text-sm" placeholder="按城市 / 州 / 邮编筛选">
+          <button id="btnDriversRefresh" class="px-3 py-2 rounded-md border text-sm">刷新</button>
+        </div>
+      </div>
+      <div id="driver-list" class="space-y-3"></div>
+    </section>
+
+    <!-- 乘客 - 发布/编辑需求（你的原表单） -->
+    <section class="bg-white rounded-xl border shadow-sm p-6">
+      <h2 class="text-lg font-semibold mb-4">乘客 - 发布行程需求</h2>
+
+      <!-- 出发地址（保持 id 不变） -->
+      <!-- ... 以下表单块直接拷贝你现有的乘客出发/目的地/其它字段的 HTML ... -->
+      <!-- 出发地址 -->
+      <h4 class="text-sm font-semibold text-gray-700 mb-2">出发地址</h4>
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div class="md:col-span-2"><label class="block text-xs text-gray-500">Country</label>
+          <select id="passenger-origin-country" class="w-full px-3 py-2 border rounded-md"><option value="US" selected>United States</option><option value="CA">Canada</option></select>
+        </div>
+        <div class="md:col-span-4"><label class="block text-xs text-gray-500">Street address</label><input id="passenger-origin-street1" class="w-full px-3 py-2 border rounded-md" placeholder="123 Main St"></div>
+        <div class="md:col-span-2"><label class="block text-xs text-gray-500">Apt / Unit（可选）</label><input id="passenger-origin-street2" class="w-full px-3 py-2 border rounded-md" placeholder="Apt 5B"></div>
+        <div class="md:col-span-2"><label class="block text-xs text-gray-500">City</label><input id="passenger-origin-city" class="w-full px-3 py-2 border rounded-md" placeholder="San Francisco"></div>
+        <div class="md:col-span-1"><label class="block text-xs text-gray-500">State/Prov.</label><input id="passenger-origin-state" list="na-states" class="w-full px-3 py-2 border rounded-md uppercase" placeholder="CA"></div>
+        <div class="md:col-span-1"><label class="block text-xs text-gray-500">ZIP/Postal</label><input id="passenger-origin-postal" class="w-full px-3 py-2 border rounded-md uppercase" placeholder="94105 或 M5V 2T6"></div>
+      </div>
+
+      <h4 class="text-sm font-semibold text-gray-700 mt-4 mb-2">目的地地址</h4>
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div class="md:col-span-2"><label class="block text-xs text-gray-500">Country</label>
+          <select id="passenger-dest-country" class="w-full px-3 py-2 border rounded-md"><option value="US" selected>United States</option><option value="CA">Canada</option></select>
+        </div>
+        <div class="md:col-span-4"><label class="block text-xs text-gray-500">Street address</label><input id="passenger-dest-street1" class="w-full px-3 py-2 border rounded-md" placeholder="456 King St W"></div>
+        <div class="md:col-span-2"><label class="block text-xs text-gray-500">Apt / Unit（可选）</label><input id="passenger-dest-street2" class="w-full px-3 py-2 border rounded-md" placeholder="Suite 210"></div>
+        <div class="md:col-span-2"><label class="block text-xs text-gray-500">City</label><input id="passenger-dest-city" class="w-full px-3 py-2 border rounded-md" placeholder="Toronto"></div>
+        <div class="md:col-span-1"><label class="block text-xs text-gray-500">State/Prov.</label><input id="passenger-dest-state" list="na-states" class="w-full px-3 py-2 border rounded-md uppercase" placeholder="ON"></div>
+        <div class="md:col-span-1"><label class="block text-xs text-gray-500">ZIP/Postal</label><input id="passenger-dest-postal" class="w-full px-3 py-2 border rounded-md uppercase" placeholder="10001 或 H3Z 2Y7"></div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
+        <input id="passenger-date" type="date" class="px-3 py-2 border rounded-md">
+        <input id="passenger-time" type="time" class="px-3 py-2 border rounded-md">
+        <input id="passenger-seats" type="number" min="1" max="8" placeholder="需要座位数" class="px-3 py-2 border rounded-md">
+        <input id="passenger-note" placeholder="备注（可选）" class="px-3 py-2 border rounded-md md:col-span-1">
+      </div>
+      <div class="mt-4">
+        <button id="add-passenger-request" class="px-5 py-2 rounded-md bg-blue-600 text-white">发布需求</button>
+        <button id="cancel-passenger-edit" class="px-3 py-2 rounded-md border hidden ml-2">取消编辑</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 北美州/省缩写 -->
+<!-- 北美州/省缩写（US + CA） -->
+  <datalist id="na-states">
+    <!-- US -->
+    <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option><option>CO</option><option>CT</option><option>DE</option><option>DC</option><option>FL</option><option>GA</option><option>HI</option><option>ID</option><option>IL</option><option>IN</option><option>IA</option><option>KS</option><option>KY</option><option>LA</option><option>ME</option><option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option><option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option><option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option><option>OK</option><option>OR</option><option>PA</option><option>RI</option><option>SC</option><option>SD</option><option>TN</option><option>TX</option><option>UT</option><option>VT</option><option>VA</option><option>WA</option><option>WV</option><option>WI</option><option>WY</option>
+    <!-- CA -->
+    <option>AB</option><option>BC</option><option>MB</option><option>NB</option><option>NL</option><option>NS</option><option>NT</option><option>NU</option><option>ON</option><option>PE</option><option>QC</option><option>SK</option><option>YT</option>
+  </datalist>
+  <script src="./js/common.js" defer></script>
+  <script src="./js/passenger.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>注册 · 城际同行</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+
+  <!-- 你的公共脚本（负责 Supabase 初始化 & 工具，需放在 register.js 之前） -->
+  <script src="common.js" defer></script>
+
+  <!-- 若需要 hCaptcha，把下一行的注释去掉并设置 window.HCAPTCHA_SITEKEY（见 register.js 顶部注释） -->
+  <!-- <script src="https://js.hcaptcha.com/1/api.js" async defer></script> -->
+
+  <style>
+    .fade-in{animation:fadeIn .25s ease-in both}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- 环境状态与 toast（与现有页面保持一致的 id） -->
+  <div id="statusBar" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm px-4 py-2">
+    未检测到 Supabase 配置。设置 <code>window.SUPABASE_URL</code>/<code>window.SUPABASE_ANON_KEY</code> 或在地址栏使用 <code>?sbUrl=...&sbKey=...</code>。
+  </div>
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden"></div>
+
+  <main class="max-w-xl mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="index.html" class="text-sm text-blue-600">&larr; 返回登录</a>
+    </div>
+
+    <section class="bg-white rounded-xl border shadow-sm p-6 fade-in">
+      <h1 class="text-xl font-semibold mb-1">创建账号</h1>
+      <p class="text-sm text-gray-500 mb-4">填写以下信息完成注册。</p>
+
+      <form id="reg-form" class="space-y-4">
+        <!-- Email & Password -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">邮箱</label>
+            <input id="reg-email" type="email" required placeholder="you@example.com" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">手机号（可选）</label>
+            <input id="profile-phone" type="tel" placeholder="仅供联系，不会公开" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">密码（≥6 位）</label>
+            <input id="reg-pass" type="password" minlength="6" required class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">确认密码</label>
+            <input id="reg-pass2" type="password" minlength="6" required class="w-full px-3 py-2 border rounded-md">
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">姓名</label>
+            <input id="profile-name" type="text" placeholder="姓名" class="w-full px-3 py-2 border rounded-md">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">性别</label>
+            <select id="profile-gender" class="w-full px-3 py-2 border rounded-md">
+              <option value="">保留不填</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 角色 -->
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">角色（注册后可在资料页更改）</label>
+          <div class="flex gap-4 text-sm">
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="user-role" value="passenger" checked>
+              我是乘客
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="user-role" value="driver">
+              我是司机
+            </label>
+          </div>
+        </div>
+
+        <!-- 人类识别：默认算术验证码；可选 hCaptcha 容器 -->
+        <div id="human-check" class="flex items-center gap-3">
+          <div id="math-wrap" class="flex items-center gap-2">
+            <span id="math-a" class="font-mono"></span>
+            <span class="font-mono">+</span>
+            <span id="math-b" class="font-mono"></span>
+            <span class="font-mono">=</span>
+            <input id="math-answer" inputmode="numeric" class="w-20 px-2 py-1 border rounded-md" placeholder="?">
+          </div>
+          <!-- hCaptcha（可选） 
+          <div id="hcaptcha-wrap" class="hidden">
+            <div class="h-captcha" data-sitekey=""></div>
+          </div>-->
+        </div>
+
+        <button id="btnRegisterSubmit" type="submit" class="w-full mt-2 px-4 py-2 rounded-md bg-blue-600 text-white">
+          注册
+        </button>
+      </form>
+
+      <p class="text-xs text-gray-500 mt-3">提交后会发送验证邮件或验证码，请按提示完成验证。</p>
+    </section>
+
+    <!-- OTP 验证弹层（与 common.js 兼容的 DOM id） -->
+    <section id="otp-section" class="hidden bg-white rounded-xl border shadow-sm p-6 mt-6">
+      <h3 class="text-lg font-semibold mb-2">输入邮箱验证码</h3>
+      <p class="text-sm text-gray-500">验证码已发送至 <span id="otp-email" class="font-medium"></span>。</p>
+      <div class="mt-3 flex items-center gap-3">
+        <input id="otp-code" inputmode="numeric" pattern="\d*" maxlength="6" placeholder="6位验证码"
+               class="px-3 py-2 border rounded-md w-40 tracking-widest text-center">
+        <button id="btnVerifyOtp" class="px-4 py-2 rounded-md bg-blue-600 text-white">验证</button>
+        <button id="btnOtpCancel" class="px-4 py-2 rounded-md border">取消</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="./js/common.js" defer></script>
+  <script src="./js/register.js" defer></script>
+</body>
+</html>
